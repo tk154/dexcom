@@ -11,6 +11,7 @@ imports.searchPath.push(Me.path);
 const Fetch = imports.fetch;
 
 let panelButton, glucoseLabel, timeout;
+let settings;
 const USERNAME = 'YourUserName';
 const PASSWORD = 'YourPassword';
 
@@ -35,7 +36,9 @@ async function _updateGlucose() {
 }
 
 function init() {
-    // Uzantı başlatma işlemleri
+    const Gio = imports.gi.Gio;
+    const ExtensionUtils = imports.misc.extensionUtils;
+    settings = ExtensionUtils.getSettings('org.gnome.shell.extensions.dexcom');
 }
 
 function enable() {
@@ -54,7 +57,7 @@ function enable() {
         text: 'Loading...',
         y_align: Clutter.ActorAlign.CENTER
     });
-    
+
     panelBox.add_child(glucoseLabel);
     panelButton.set_child(panelBox);
 
@@ -69,7 +72,7 @@ function enable() {
 
 function disable() {
     Main.panel._rightBox.remove_child(panelButton);
-    
+
     if (timeout) {
         GLib.source_remove(timeout);
         timeout = null;
