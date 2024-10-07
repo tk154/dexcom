@@ -14,7 +14,7 @@ export default class DexcomExtension extends Extension {
         this._indicator.add_child(this._label);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
-        this._updateGlucose();
+        this._updateGlucose().catch(e => logError(`Error in updateGlucose: ${e}`));
 
         this._timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 180, () => {
             this._updateGlucose().catch(e => logError(`Error in updateGlucose: ${e}`));
@@ -23,12 +23,12 @@ export default class DexcomExtension extends Extension {
     }
 
     disable() {
-        if ( this._indicator) {
+        if (this._indicator) {
             this._indicator.destroy();
             this._indicator = null;
         }
 
-        if ( this._timeout) {
+        if (this._timeout) {
             GLib.source_remove(this._timeout);
             this._timeout = null;
         }
