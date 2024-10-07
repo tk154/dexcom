@@ -80,13 +80,12 @@ export default class DexcomExtension extends Extension {
 
             loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
-            // send_and_read_async kullanımıyla giriş isteği
             session.send_and_read_async(loginMessage, null, (session, result) => {
                 try {
                     let responseBytes = session.send_and_read_finish(result);
                     let responseText = responseBytes.get_data();
                     let response = JSON.parse(responseText);
-                    
+
                     if (!response || response.status_code !== 200) {
                         logError(`Login failed with status ${response?.status_code}`);
                         reject(new Error(`Login failed with status ${response?.status_code || "undefined"}`));
@@ -114,6 +113,8 @@ export default class DexcomExtension extends Extension {
                     reject(e);
                 }
             });
+        }).catch(error => {
+            logError(`Error fetching glucose data: ${error}`);
         });
     }
 
