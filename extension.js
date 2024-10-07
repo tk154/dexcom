@@ -4,7 +4,8 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
-import Gio from 'gi://Gio';  // Log dosyasına yazmak için gerekli
+import Gio from 'gi://Gio';
+import Soup from 'gi://Soup';  // GNOME Shell için HTTP istekleri
 
 export default class DexcomExtension extends Extension {
     enable() {
@@ -35,7 +36,7 @@ export default class DexcomExtension extends Extension {
 
     async _updateGlucose() {
         log("Updating glucose data...");
-        let glucoseData = await this._fetchGlucoseData('YourDexcomUsername', 'YourDexcomPassword');
+        let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);  // OUS Avrupa sunucusu
 
         if (glucoseData) {
             let glucoseValue = glucoseData.Value;
@@ -54,51 +55,53 @@ export default class DexcomExtension extends Extension {
         }
     }
 
-    async _fetchGlucoseData(username, password) {
-        const dexcomLoginUrl = 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
-        const dexcomGlucoseUrl = 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
+    _fetchGlucoseData(username, password, ous = false) {
+        return new Promise((resolve, reject) => {
+            const dexcomLoginUrl = ous
+                ? 'https://shareous.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'  // Avrupa sunucusu
+                : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
+                
+            const dexcomGlucoseUrl = ous
+                ? 'https://shareous.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'  // Avrupa sunucusu
+                : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
 
-        try {
-            log(`Attempting to fetch glucose data for ${username}`);
-            
-            let loginResponse = await fetch(dexcomLoginUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    accountName: username,
-                    password: password,
-                    applicationId: 'd89443d2-327c-4a6f-89e5-496bbb0317db'  // Dexcom Share Application ID
-                })
+            const session = new Soup.Session();
+
+            // Giriş isteği yapıyoruz
+            let loginMessage = Soup.Message.new('POST', dexcomLoginUrl);
+            loginMessage.request_body.append(`{
+                "accountName": "${username}",
+                "password": "${password}",
+                "applicationId": "d89443d2-327c-4a6f-89e5-496bbb0317db"
+            }`);
+            loginMessage.request_headers.append('Content-Type', 'application/json');
+
+            session.send_async(loginMessage, null, (session, result) => {
+                let response = session.send_finish(result);
+                if (response.status_code !== 200) {
+                    logError(`Login failed with status ${response.status_code}`);
+                    reject(null);
+                    return;
+                }
+                let sessionId = response.response_body.data.trim();
+                log(`Session ID retrieved: ${sessionId}`);
+
+                // Glukoz verisi çekme isteği yapıyoruz
+                let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
+                session.send_async(glucoseMessage, null, (session, result) => {
+                    let glucoseResponse = session.send_finish(result);
+                    if (glucoseResponse.status_code !== 200) {
+                        logError(`Glucose data fetch failed with status ${glucoseResponse.status_code}`);
+                        reject(null);
+                        return;
+                    }
+
+                    let glucoseData = JSON.parse(glucoseResponse.response_body.data);
+                    log(`Glucose data received: ${glucoseResponse.response_body.data}`);
+                    resolve(glucoseData[0]);
+                });
             });
-
-            if (!loginResponse.ok) {
-                logError(`Login failed with status ${loginResponse.status}`);
-                return null;
-            }
-            
-            let sessionId = await loginResponse.text();
-            log(`Session ID retrieved: ${sessionId}`);
-
-            let glucoseResponse = await fetch(dexcomGlucoseUrl.replace('SESSION_ID', sessionId), {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (!glucoseResponse.ok) {
-                logError(`Glucose data fetch failed with status ${glucoseResponse.status}`);
-                return null;
-            }
-
-            let glucoseData = await glucoseResponse.json();
-            log(`Glucose data received: ${JSON.stringify(glucoseData)}`);
-
-            this._logToFile(JSON.stringify(glucoseData, null, 2));  // Veriyi log dosyasına yaz
-
-            return glucoseData[0];  // Return the latest glucose value
-        } catch (error) {
-            logError(`Error fetching glucose data: ${error}`);
-            return null;
-        }
+        });
     }
 
     // Log verilerini dosyaya yazma fonksiyonu
