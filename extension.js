@@ -62,11 +62,11 @@ export default class DexcomExtension extends Extension {
     _fetchGlucoseData(username, password, ous = false) {
         return new Promise((resolve, reject) => {
             const dexcomLoginUrl = ous
-                ? 'https://shareous.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'  // Avrupa sunucusu
+                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'  // Avrupa sunucusu
                 : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
 
             const dexcomGlucoseUrl = ous
-                ? 'https://shareous.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'  // Avrupa sunucusu
+                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'  // Avrupa sunucusu
                 : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
 
             const session = new Soup.Session();
