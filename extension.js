@@ -61,10 +61,11 @@ export default class DexcomExtension extends Extension {
 
     _fetchGlucoseData(username, password, ous = false) {
         return new Promise((resolve, reject) => {
+            // Avrupa dışı kullanıcılar için sunucu adresi güncellendi
             const dexcomLoginUrl = ous
                 ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'  // Avrupa sunucusu
                 : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
-
+                
             const dexcomGlucoseUrl = ous
                 ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'  // Avrupa sunucusu
                 : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
@@ -73,7 +74,7 @@ export default class DexcomExtension extends Extension {
 
             // Giriş isteği yapıyoruz
             let loginMessage = Soup.Message.new('POST', dexcomLoginUrl);
-
+            
             // Request body verilerini uygun şekilde ekliyoruz
             let requestBody = JSON.stringify({
                 "accountName": username,
@@ -84,7 +85,7 @@ export default class DexcomExtension extends Extension {
             loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
             // Dört argümanlı send_async kullanımı
-            session.send_async(loginMessage, null, (session, result) => {
+            session.send_async(loginMessage, null, null, (session, result) => {
                 try {
                     let response = session.send_finish(result);
                     if (response.status_code !== 200) {
@@ -97,8 +98,7 @@ export default class DexcomExtension extends Extension {
 
                     // Glukoz verisi çekme isteği yapıyoruz
                     let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
-
-                    session.send_async(glucoseMessage, null, (session, result) => {
+                    session.send_async(glucoseMessage, null, null, (session, result) => {
                         try {
                             let glucoseResponse = session.send_finish(result);
                             if (glucoseResponse.status_code !== 200) {
@@ -111,12 +111,10 @@ export default class DexcomExtension extends Extension {
                             log(`Glucose data received: ${glucoseResponse.response_body.data}`);
                             resolve(glucoseData[0]);
                         } catch (e) {
-                            logError(`Error processing glucose response: ${e}`);
                             reject(e);
                         }
                     }, null);  // Dördüncü argüman olarak null eklendi
                 } catch (e) {
-                    logError(`Error processing login response: ${e}`);
                     reject(e);
                 }
             }, null);  // Dördüncü argüman olarak null eklendi
