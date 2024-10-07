@@ -83,6 +83,7 @@ export default class DexcomExtension extends Extension {
 
             loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
+            // Dört argümanlı send_async kullanımı
             session.send_async(loginMessage, null, (session, result) => {
                 try {
                     let response = session.send_finish(result);
@@ -96,7 +97,6 @@ export default class DexcomExtension extends Extension {
 
                     // Glukoz verisi çekme isteği yapıyoruz
                     let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
-
                     session.send_async(glucoseMessage, null, null, (session, result) => {
                         try {
                             let glucoseResponse = session.send_finish(result);
@@ -112,11 +112,11 @@ export default class DexcomExtension extends Extension {
                         } catch (e) {
                             reject(e);
                         }
-                    });
+                    }, null);  // Dördüncü argüman olarak null eklendi
                 } catch (e) {
                     reject(e);
                 }
-            });
+            }, null);  // Dördüncü argüman olarak null eklendi
         });
     }
 
