@@ -5,7 +5,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
-import Soup from 'gi://Soup';  // GNOME Shell için HTTP istekleri
+import Soup from 'gi://Soup'; 
 
 export default class DexcomExtension extends Extension {
     enable() {
@@ -37,7 +37,7 @@ export default class DexcomExtension extends Extension {
     async _updateGlucose() {
         try {
             log("Updating glucose data...");
-            let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);  // OUS Avrupa sunucusu
+            let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);  
 
             if (glucoseData) {
                 let glucoseValue = glucoseData.Value;
@@ -61,21 +61,17 @@ export default class DexcomExtension extends Extension {
 
     _fetchGlucoseData(username, password, ous = false) {
         return new Promise((resolve, reject) => {
-            // Avrupa dışı kullanıcılar için sunucu adresi güncellendi
             const dexcomLoginUrl = ous
-                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'  // Avrupa sunucusu
+                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'
                 : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
                 
             const dexcomGlucoseUrl = ous
-                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'  // Avrupa sunucusu
+                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'
                 : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
 
             const session = new Soup.Session();
-
-            // Giriş isteği yapıyoruz
             let loginMessage = Soup.Message.new('POST', dexcomLoginUrl);
             
-            // Request body verilerini uygun şekilde ekliyoruz
             let requestBody = JSON.stringify({
                 "accountName": username,
                 "password": password,
@@ -84,8 +80,7 @@ export default class DexcomExtension extends Extension {
 
             loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
-            // Dört argümanlı send_async kullanımı
-            session.send_async(loginMessage, null, null, (session, result) => {
+            session.send_async(loginMessage, null, (session, result) => {
                 try {
                     let response = session.send_finish(result);
                     if (response.status_code !== 200) {
@@ -96,7 +91,6 @@ export default class DexcomExtension extends Extension {
                     let sessionId = response.response_body.data.trim();
                     log(`Session ID retrieved: ${sessionId}`);
 
-                    // Glukoz verisi çekme isteği yapıyoruz
                     let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
                     session.send_async(glucoseMessage, null, null, (session, result) => {
                         try {
@@ -113,17 +107,11 @@ export default class DexcomExtension extends Extension {
                         } catch (e) {
                             reject(e);
                         }
-                    }, null);  // Dördüncü argüman olarak null eklendi
+                    }, null);
                 } catch (e) {
                     reject(e);
                 }
-            }, null);  // Dördüncü argüman olarak null eklendi
+            }, null);
         });
-    }
-
-    // Log verilerini dosyaya yazma fonksiyonu
-    _logToFile(data) {
-        let file = Gio.File.new_for_path("/tmp/dexcom_data.log");
-        file.replace_contents(data + '\n', null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
     }
 }
