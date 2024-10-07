@@ -1,17 +1,25 @@
 import St from 'gi://St';
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { PanelMenu, Button } from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import GLib from 'gi://GLib';
-//import Clutter from 'gi://Clutter';
+import Clutter from 'gi://Clutter';
 
 //const USERNAME = 'YourUserName';
 //const PASSWORD = 'YourPassword';
 
 export default class DexcomExtension extends Extension {
     enable() {
-        this._indicator = new St.Label({ text: 'Dexcom Monitor' });
+        // Durum göstergesini PanelMenu.Button ile oluşturuyoruz
+        this._indicator = new PanelMenu.Button(0.0, 'Dexcom Monitor', false);
+
+        // Label ekliyoruz
+        let label = new St.Label({ text: 'Dexcom Monitor', y_align: Clutter.ActorAlign.CENTER });
+        this._indicator.add_child(label);
+
+        // Durum göstergesini panelin sağ tarafına ekliyoruz
         Main.panel.addToStatusArea(this.uuid, this._indicator);
-        
+
         // İlk veri güncellemesini başlatıyoruz
         this._updateGlucose();
         // Her 3 dakikada bir veriyi yeniliyoruz
@@ -41,16 +49,16 @@ export default class DexcomExtension extends Extension {
 
             // Glucose değeri için renk belirleme
             if (glucoseValue >= 210) {
-                this._indicator.set_style("color: yellow;");
+                this._indicator.get_child_at_index(0).set_style("color: yellow;");
             } else if (glucoseValue < 90) {
-                this._indicator.set_style("color: red;");
+                this._indicator.get_child_at_index(0).set_style("color: red;");
             } else {
-                this._indicator.set_style("color: green;");
+                this._indicator.get_child_at_index(0).set_style("color: green;");
             }
 
-            this._indicator.set_text(`${glucoseValue} mg/dL`);
+            this._indicator.get_child_at_index(0).set_text(`${glucoseValue} mg/dL`);
         } else {
-            this._indicator.set_text("No Data");
+            this._indicator.get_child_at_index(0).set_text("No Data");
         }
     }
 
