@@ -4,6 +4,7 @@ var DexcomAPI = {
         const dexcomGlucoseUrl = 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
 
         try {
+            // Dexcom Share API'ye giriş yapıyoruz
             let loginResponse = await fetch(dexcomLoginUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -14,17 +15,18 @@ var DexcomAPI = {
                 })
             });
 
-            let sessionId = await loginResponse.text();  // Get session ID
+            let sessionId = await loginResponse.text();  // Giriş başarılı ise session ID alınır
 
+            // Session ID ile glukoz verilerini alıyoruz
             let glucoseResponse = await fetch(dexcomGlucoseUrl.replace('SESSION_ID', sessionId), {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            let glucoseData = await glucoseResponse.json();  // Get glucose data
-            return glucoseData[0];  // Return the latest glucose value
+            let glucoseData = await glucoseResponse.json();  // Glukoz verileri JSON formatında döner
+            return glucoseData[0];  // En son glukoz değerini döndürür
         } catch (error) {
-            logError(error);  // Log any error
+            logError(error);  // Hata varsa konsola yazılır
             return null;
         }
     }
