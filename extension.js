@@ -14,8 +14,10 @@ export default class DexcomExtension extends Extension {
         this._indicator.add_child(this._label);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
+        // Glucose verisi güncellemesi, hata yakalama işlemi ile
         this._updateGlucose().catch(e => logError(`Error in updateGlucose: ${e}`));
 
+        // 3 dakikada bir veriyi güncellemek için zamanlayıcı
         this._timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 180, () => {
             this._updateGlucose().catch(e => logError(`Error in updateGlucose: ${e}`));
             return GLib.SOURCE_CONTINUE;
@@ -38,7 +40,7 @@ export default class DexcomExtension extends Extension {
         try {
             log("Updating glucose data...");
             let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);
-
+    
             if (glucoseData) {
                 let glucoseValue = glucoseData.Value;
                 log(`Glucose value: ${glucoseValue}`);
