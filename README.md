@@ -1,3 +1,5 @@
+![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.dexcom)
+
 # Dexcom Blood Glucose Monitor for GNOME Shell
 
 **Dexcom Blood Glucose Monitor** is a GNOME Shell extension that integrates with the Dexcom Share API to display real-time blood glucose levels in the GNOME top bar. The extension provides visual alerts with color-coded indicators based on glucose thresholds, ensuring that users are promptly notified of significant changes in their glucose levels.
