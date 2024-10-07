@@ -17,7 +17,7 @@ export default class DexcomExtension extends Extension {
         this._updateGlucose();
 
         this._timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 180, () => {
-            this._updateGlucose();
+            this._updateGlucose().catch(e => logError(`Error in updateGlucose: ${e}`));
             return GLib.SOURCE_CONTINUE;
         });
     }
@@ -35,23 +35,27 @@ export default class DexcomExtension extends Extension {
     }
 
     async _updateGlucose() {
-        log("Updating glucose data...");
-        let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);  // OUS Avrupa sunucusu
+        try {
+            log("Updating glucose data...");
+            let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);  // OUS Avrupa sunucusu
 
-        if (glucoseData) {
-            let glucoseValue = glucoseData.Value;
-            log(`Glucose value: ${glucoseValue}`);
-            if (glucoseValue >= 210) {
-                this._label.set_style("color: yellow;");
-            } else if (glucoseValue < 90) {
-                this._label.set_style("color: red;");
+            if (glucoseData) {
+                let glucoseValue = glucoseData.Value;
+                log(`Glucose value: ${glucoseValue}`);
+                if (glucoseValue >= 210) {
+                    this._label.set_style("color: yellow;");
+                } else if (glucoseValue < 90) {
+                    this._label.set_style("color: red;");
+                } else {
+                    this._label.set_style("color: green;");
+                }
+                this._label.set_text(`${glucoseValue} mg/dL`);
             } else {
-                this._label.set_style("color: green;");
+                log("No glucose data available.");
+                this._label.set_text("No Data");
             }
-            this._label.set_text(`${glucoseValue} mg/dL`);
-        } else {
-            log("No glucose data available.");
-            this._label.set_text("No Data");
+        } catch (error) {
+            logError(`Error fetching or processing glucose data: ${error}`);
         }
     }
 
@@ -77,29 +81,37 @@ export default class DexcomExtension extends Extension {
             loginMessage.request_headers.append('Content-Type', 'application/json');
 
             session.send_async(loginMessage, null, (session, result) => {
-                let response = session.send_finish(result);
-                if (response.status_code !== 200) {
-                    logError(`Login failed with status ${response.status_code}`);
-                    reject(null);
-                    return;
-                }
-                let sessionId = response.response_body.data.trim();
-                log(`Session ID retrieved: ${sessionId}`);
-
-                // Glukoz verisi çekme isteği yapıyoruz
-                let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
-                session.send_async(glucoseMessage, null, (session, result) => {
-                    let glucoseResponse = session.send_finish(result);
-                    if (glucoseResponse.status_code !== 200) {
-                        logError(`Glucose data fetch failed with status ${glucoseResponse.status_code}`);
-                        reject(null);
+                try {
+                    let response = session.send_finish(result);
+                    if (response.status_code !== 200) {
+                        logError(`Login failed with status ${response.status_code}`);
+                        reject(new Error(`Login failed with status ${response.status_code}`));
                         return;
                     }
+                    let sessionId = response.response_body.data.trim();
+                    log(`Session ID retrieved: ${sessionId}`);
 
-                    let glucoseData = JSON.parse(glucoseResponse.response_body.data);
-                    log(`Glucose data received: ${glucoseResponse.response_body.data}`);
-                    resolve(glucoseData[0]);
-                });
+                    // Glukoz verisi çekme isteği yapıyoruz
+                    let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
+                    session.send_async(glucoseMessage, null, (session, result) => {
+                        try {
+                            let glucoseResponse = session.send_finish(result);
+                            if (glucoseResponse.status_code !== 200) {
+                                logError(`Glucose data fetch failed with status ${glucoseResponse.status_code}`);
+                                reject(new Error(`Glucose data fetch failed with status ${glucoseResponse.status_code}`));
+                                return;
+                            }
+
+                            let glucoseData = JSON.parse(glucoseResponse.response_body.data);
+                            log(`Glucose data received: ${glucoseResponse.response_body.data}`);
+                            resolve(glucoseData[0]);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+                } catch (e) {
+                    reject(e);
+                }
             });
         });
     }
