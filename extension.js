@@ -23,12 +23,12 @@ export default class DexcomExtension extends Extension {
     }
 
     disable() {
-        if (this._indicator) {
+        if ( this._indicator) {
             this._indicator.destroy();
             this._indicator = null;
         }
 
-        if (this._timeout) {
+        if ( this._timeout) {
             GLib.source_remove(this._timeout);
             this._timeout = null;
         }
@@ -37,7 +37,7 @@ export default class DexcomExtension extends Extension {
     async _updateGlucose() {
         try {
             log("Updating glucose data...");
-            let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);  
+            let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);
 
             if (glucoseData) {
                 let glucoseValue = glucoseData.Value;
