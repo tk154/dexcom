@@ -96,7 +96,8 @@ export default class DexcomExtension extends Extension {
 
                     // Glukoz verisi çekme isteği yapıyoruz
                     let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
-                    session.send_async(glucoseMessage, null, (session, result) => {
+
+                    session.send_async(glucoseMessage, null, null, (session, result) => {
                         try {
                             let glucoseResponse = session.send_finish(result);
                             if (glucoseResponse.status_code !== 200) {
