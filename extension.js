@@ -84,7 +84,7 @@ export default class DexcomExtension extends Extension {
             loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
             // Dört argümanlı send_async kullanımı
-            session.send_async(loginMessage, null, (session, result) => {
+            session.send_async(loginMessage, null, null, (session, result) => {
                 try {
                     let response = session.send_finish(result);
                     if (response.status_code !== 200) {
