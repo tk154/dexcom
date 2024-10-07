@@ -73,12 +73,15 @@ export default class DexcomExtension extends Extension {
 
             // Giriş isteği yapıyoruz
             let loginMessage = Soup.Message.new('POST', dexcomLoginUrl);
-            loginMessage.request_body.append(`{
-                "accountName": "${username}",
-                "password": "${password}",
+            
+            // Request body verilerini uygun şekilde ekliyoruz
+            let requestBody = JSON.stringify({
+                "accountName": username,
+                "password": password,
                 "applicationId": "d89443d2-327c-4a6f-89e5-496bbb0317db"
-            }`);
-            loginMessage.request_headers.append('Content-Type', 'application/json');
+            });
+
+            loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
             session.send_async(loginMessage, null, (session, result) => {
                 try {
