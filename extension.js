@@ -5,7 +5,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
-import Soup from 'gi://Soup'; 
+import Soup from 'gi://Soup';  // GNOME Shell için HTTP istekleri
 
 export default class DexcomExtension extends Extension {
     enable() {
@@ -80,38 +80,46 @@ export default class DexcomExtension extends Extension {
 
             loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
-            session.send_async(loginMessage, null, (session, result) => {
+            // send_and_read_async kullanımıyla giriş isteği
+            session.send_and_read_async(loginMessage, null, (session, result) => {
                 try {
-                    let response = session.send_finish(result);
-                    if (response.status_code !== 200) {
-                        logError(`Login failed with status ${response.status_code}`);
-                        reject(new Error(`Login failed with status ${response.status_code}`));
+                    let responseBytes = session.send_and_read_finish(result);
+                    let responseText = responseBytes.get_data();
+                    let response = JSON.parse(responseText);
+                    
+                    if (!response || response.status_code !== 200) {
+                        logError(`Login failed with status ${response?.status_code}`);
+                        reject(new Error(`Login failed with status ${response?.status_code || "undefined"}`));
                         return;
                     }
-                    let sessionId = response.response_body.data.trim();
+
+                    let sessionId = response.trim();
                     log(`Session ID retrieved: ${sessionId}`);
 
                     let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
-                    session.send_async(glucoseMessage, null, null, (session, result) => {
-                        try {
-                            let glucoseResponse = session.send_finish(result);
-                            if (glucoseResponse.status_code !== 200) {
-                                logError(`Glucose data fetch failed with status ${glucoseResponse.status_code}`);
-                                reject(new Error(`Glucose data fetch failed with status ${glucoseResponse.status_code}`));
-                                return;
-                            }
 
-                            let glucoseData = JSON.parse(glucoseResponse.response_body.data);
-                            log(`Glucose data received: ${glucoseResponse.response_body.data}`);
+                    session.send_and_read_async(glucoseMessage, null, (session, result) => {
+                        try {
+                            let glucoseResponseBytes = session.send_and_read_finish(result);
+                            let glucoseResponseText = glucoseResponseBytes.get_data();
+                            let glucoseData = JSON.parse(glucoseResponseText);
+
+                            log(`Glucose data received: ${glucoseResponseText}`);
                             resolve(glucoseData[0]);
                         } catch (e) {
                             reject(e);
                         }
-                    }, null);
+                    });
                 } catch (e) {
                     reject(e);
                 }
-            }, null);
+            });
         });
+    }
+
+    // Log verilerini dosyaya yazma fonksiyonu
+    _logToFile(data) {
+        let file = Gio.File.new_for_path("/tmp/dexcom_data.log");
+        file.replace_contents(data + '\n', null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
     }
 }
