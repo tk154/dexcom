@@ -1,78 +1,86 @@
-//const Main = imports.ui.main;
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-//const GLib = imports.gi.GLib;
-import GLib from 'gi://GLib';
-import * as DexcomAPI from './fetch.js';
-//const St = imports.gi.St;
 import St from 'gi://St';
-//const Clutter = imports.gi.Clutter;
-import Clutter from 'gi://Clutter';
-const USERNAME = 'YourUserName';
-const PASSWORD = 'YourPassword';
-let panelButton, glucoseLabel, timeout, settings;
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import GLib from 'gi://GLib';
+//import Clutter from 'gi://Clutter';
 
-async function _updateGlucose() {
-    let glucoseData = await DexcomAPI.getGlucoseData(USERNAME, PASSWORD);
+//const USERNAME = 'YourUserName';
+//const PASSWORD = 'YourPassword';
 
-    if (glucoseData) {
-        let glucoseValue = glucoseData.Value;
-   
-        if (glucoseValue >= 210) {
-            glucoseLabel.set_style("color: yellow;");
-        } else if (glucoseValue < 90) {
-            glucoseLabel.set_style("color: red;");
-        } else {
-            glucoseLabel.set_style("color: green;");
+export default class DexcomExtension extends Extension {
+    enable() {
+        this._indicator = new St.Label({ text: 'Dexcom Monitor' });
+        Main.panel.addToStatusArea(this.uuid, this._indicator);
+        
+        // İlk veri güncellemesini başlatıyoruz
+        this._updateGlucose();
+        // Her 3 dakikada bir veriyi yeniliyoruz
+        this._timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 180, () => {
+            this._updateGlucose();
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
+    disable() {
+        if (this._indicator) {
+            this._indicator.destroy();
+            this._indicator = null;
         }
 
-        glucoseLabel.set_text(`${glucoseValue} mg/dL`);
-    } else {
-        glucoseLabel.set_text("No Data");
+        if (this._timeout) {
+            GLib.source_remove(this._timeout);
+            this._timeout = null;
+        }
     }
-}
 
-function init() {
-    const Gio = imports.gi.Gio;
-    const ExtensionUtils = imports.misc.extensionUtils;
-    settings = ExtensionUtils.getSettings('org.gnome.shell.extensions.dexcom');
-}
+    async _updateGlucose() {
+        let glucoseData = await this._fetchGlucoseData('YourDexcomUsername', 'YourDexcomPassword');
+        
+        if (glucoseData) {
+            let glucoseValue = glucoseData.Value;
 
-function enable() {
-    
-    panelButton = new St.Bin({
-        style_class: 'panel-button',
-        reactive: true,
-        can_focus: true,
-        x_fill: true,
-        y_fill: false,
-        track_hover: true
-    });
+            // Glucose değeri için renk belirleme
+            if (glucoseValue >= 210) {
+                this._indicator.set_style("color: yellow;");
+            } else if (glucoseValue < 90) {
+                this._indicator.set_style("color: red;");
+            } else {
+                this._indicator.set_style("color: green;");
+            }
 
-    let panelBox = new St.BoxLayout({ style_class: 'panel-box' });
-    glucoseLabel = new St.Label({
-        text: 'Loading...',
-        y_align: Clutter.ActorAlign.CENTER
-    });
-    
-    panelBox.add_child(glucoseLabel);
-    panelButton.set_child(panelBox);
+            this._indicator.set_text(`${glucoseValue} mg/dL`);
+        } else {
+            this._indicator.set_text("No Data");
+        }
+    }
 
-    Main.panel._rightBox.insert_child_at_index(panelButton, 0);
+    async _fetchGlucoseData(username, password) {
+        const dexcomLoginUrl = 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
+        const dexcomGlucoseUrl = 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
 
-    // İlk güncelleme ve her 3 dakikada bir güncelleme
-    _updateGlucose();
-    timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 180, () => {
-        _updateGlucose();
-        return true;
-    });
-}
+        try {
+            let loginResponse = await fetch(dexcomLoginUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    accountName: username,
+                    password: password,
+                    applicationId: 'd89443d2-327c-4a6f-89e5-496bbb0317db'  // Dexcom Share Application ID
+                })
+            });
 
-function disable() {
-    // Uzantı devre dışı bırakıldığında bileşeni kaldırıyoruz
-    Main.panel._rightBox.remove_child(panelButton);
+            let sessionId = await loginResponse.text();  // Giriş başarılıysa session ID alınıyor
 
-    if (timeout) {
-        GLib.source_remove(timeout);
-        timeout = null;
+            let glucoseResponse = await fetch(dexcomGlucoseUrl.replace('SESSION_ID', sessionId), {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            let glucoseData = await glucoseResponse.json();  // JSON formatında verileri alıyoruz
+            return glucoseData[0];  // En son glukoz verisini döndürüyoruz
+        } catch (error) {
+            logError(error);
+            return null;
+        }
     }
 }
