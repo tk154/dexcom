@@ -40,7 +40,7 @@ export default class DexcomExtension extends Extension {
         try {
             log("Updating glucose data...");
             let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);
-    
+
             if (glucoseData) {
                 let glucoseValue = glucoseData.Value;
                 log(`Glucose value: ${glucoseValue}`);
@@ -63,60 +63,67 @@ export default class DexcomExtension extends Extension {
 
     _fetchGlucoseData(username, password, ous = false) {
         return new Promise((resolve, reject) => {
-            const dexcomLoginUrl = ous
-                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'
-                : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
+            try {
+                const dexcomLoginUrl = ous
+                    ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'
+                    : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
+                    
+                const dexcomGlucoseUrl = ous
+                    ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'
+                    : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
+
+                const session = new Soup.Session();
+                let loginMessage = Soup.Message.new('POST', dexcomLoginUrl);
                 
-            const dexcomGlucoseUrl = ous
-                ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'
-                : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
+                let requestBody = JSON.stringify({
+                    "accountName": username,
+                    "password": password,
+                    "applicationId": "d89443d2-327c-4a6f-89e5-496bbb0317db"
+                });
 
-            const session = new Soup.Session();
-            let loginMessage = Soup.Message.new('POST', dexcomLoginUrl);
-            
-            let requestBody = JSON.stringify({
-                "accountName": username,
-                "password": password,
-                "applicationId": "d89443d2-327c-4a6f-89e5-496bbb0317db"
-            });
+                loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
-            loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
+                session.send_and_read_async(loginMessage, null, (session, result) => {
+                    try {
+                        let responseBytes = session.send_and_read_finish(result);
+                        let responseText = responseBytes.get_data();
+                        let response = JSON.parse(responseText);
 
-            session.send_and_read_async(loginMessage, null, (session, result) => {
-                try {
-                    let responseBytes = session.send_and_read_finish(result);
-                    let responseText = responseBytes.get_data();
-                    let response = JSON.parse(responseText);
-
-                    if (!response || response.status_code !== 200) {
-                        logError(`Login failed with status ${response?.status_code}`);
-                        reject(new Error(`Login failed with status ${response?.status_code || "undefined"}`));
-                        return;
-                    }
-
-                    let sessionId = response.trim();
-                    log(`Session ID retrieved: ${sessionId}`);
-
-                    let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
-
-                    session.send_and_read_async(glucoseMessage, null, (session, result) => {
-                        try {
-                            let glucoseResponseBytes = session.send_and_read_finish(result);
-                            let glucoseResponseText = glucoseResponseBytes.get_data();
-                            let glucoseData = JSON.parse(glucoseResponseText);
-
-                            log(`Glucose data received: ${glucoseResponseText}`);
-                            resolve(glucoseData[0]);
-                        } catch (e) {
-                            reject(e);
+                        if (!response || response.status_code !== 200) {
+                            logError(`Login failed with status ${response?.status_code}`);
+                            reject(new Error(`Login failed with status ${response?.status_code || "undefined"}`));
+                            return;
                         }
-                    });
-                } catch (e) {
-                    reject(e);
-                }
-            });
+
+                        let sessionId = response.trim();
+                        log(`Session ID retrieved: ${sessionId}`);
+
+                        let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
+
+                        session.send_and_read_async(glucoseMessage, null, (session, result) => {
+                            try {
+                                let glucoseResponseBytes = session.send_and_read_finish(result);
+                                let glucoseResponseText = glucoseResponseBytes.get_data();
+                                let glucoseData = JSON.parse(glucoseResponseText);
+
+                                log(`Glucose data received: ${glucoseResponseText}`);
+                                resolve(glucoseData[0]);
+                            } catch (e) {
+                                logError(`Error processing glucose response: ${e}`);
+                                reject(e);
+                            }
+                        });
+                    } catch (e) {
+                        logError(`Error during login: ${e}`);
+                        reject(e);
+                    }
+                });
+            } catch (e) {
+                logError(`Error during data fetch: ${e}`);
+                reject(e);
+            }
         }).catch(error => {
-            logError(`Error fetching glucose data: ${error}`);
+            logError(`Unhandled error in _fetchGlucoseData: ${error}`);
         });
     }
 
