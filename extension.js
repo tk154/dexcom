@@ -65,11 +65,11 @@ export default class DexcomExtension extends Extension {
         return new Promise((resolve, reject) => {
             try {
                 const dexcomLoginUrl = ous
-                    ? 'https://shareous.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'
+                    ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'
                     : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
                     
                 const dexcomGlucoseUrl = ous
-                    ? 'https://shareous.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'
+                    ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'
                     : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
 
                 const session = new Soup.Session();
@@ -87,8 +87,9 @@ export default class DexcomExtension extends Extension {
                     try {
                         let responseBytes = session.send_and_read_finish(result);
                         let responseText = responseBytes.get_data();
-                        let response = JSON.parse(responseText);
+                        log(`Received login response: ${responseText}`);  // Yanıtı loglayarak kontrol et
 
+                        let response = JSON.parse(responseText);
                         if (!response || response.status_code !== 200) {
                             logError(`Login failed with status ${response?.status_code}`);
                             reject(new Error(`Login failed with status ${response?.status_code || "undefined"}`));
@@ -104,9 +105,9 @@ export default class DexcomExtension extends Extension {
                             try {
                                 let glucoseResponseBytes = session.send_and_read_finish(result);
                                 let glucoseResponseText = glucoseResponseBytes.get_data();
-                                let glucoseData = JSON.parse(glucoseResponseText);
+                                log(`Glucose response received: ${glucoseResponseText}`);  // Glucose verisi loglanıyor
 
-                                log(`Glucose data received: ${glucoseResponseText}`);
+                                let glucoseData = JSON.parse(glucoseResponseText);
                                 resolve(glucoseData[0]);
                             } catch (e) {
                                 logError(`Error processing glucose response: ${e}`);
