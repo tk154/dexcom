@@ -1,0 +1,14 @@
+<schemalist>
+  <schema id="org.gnome.shell.extensions.dexcom" path="/org/gnome/shell/extensions/dexcom/">
+    <key name="username" type="s">
+      <default>""</default>
+      <summary>Dexcom Username</summary>
+      <description>Dexcom account username.</description>
+    </key>
+    <key name="password" type="s">
+      <default>""</default>
+      <summary>Dexcom Password</summary>
+      <description>Dexcom account password.</description>
+    </key>
+  </schema>
+</schemalist>

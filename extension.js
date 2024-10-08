@@ -5,7 +5,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
-import Soup from 'gi://Soup';  // GNOME Shell için HTTP istekleri
+import Soup from 'gi://Soup';
 
 export default class DexcomExtension extends Extension {
     enable() {
@@ -14,10 +14,12 @@ export default class DexcomExtension extends Extension {
         this._indicator.add_child(this._label);
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
-        // Glucose verisi güncellemesi, hata yakalama işlemi ile
+        let settings = new Gio.Settings({ schema_id: 'org.gnome.shell.extensions.dexcom' });
+        this._username = settings.get_string('username');
+        this._password = settings.get_string('password');
+
         this._updateGlucose().catch(e => logError(`Error in updateGlucose: ${e}`));
 
-        // 3 dakikada bir veriyi güncellemek için zamanlayıcı
         this._timeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 180, () => {
             this._updateGlucose().catch(e => logError(`Error in updateGlucose: ${e}`));
             return GLib.SOURCE_CONTINUE;
@@ -34,13 +36,18 @@ export default class DexcomExtension extends Extension {
             GLib.source_remove(this._timeout);
             this._timeout = null;
         }
+
+        if (this._label) {
+            this._label.destroy();
+            this._label = null;
+        }
     }
 
     async _updateGlucose() {
         try {
             log("Updating glucose data...");
-            let glucoseData = await this._fetchGlucoseData('your_dexcom_username', 'your_dexcom_password', true);
-
+            let glucoseData = await this._fetchGlucoseData(this._username, this._password, true);
+            
             if (glucoseData) {
                 let glucoseValue = glucoseData.Value;
                 log(`Glucose value: ${glucoseValue}`);
@@ -67,14 +74,14 @@ export default class DexcomExtension extends Extension {
                 const dexcomLoginUrl = ous
                     ? 'https://shareous1.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount'
                     : 'https://share2.dexcom.com/ShareWebServices/Services/General/LoginPublisherAccount';
-                    
+                
                 const dexcomGlucoseUrl = ous
                     ? 'https://shareous1.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1'
                     : 'https://share2.dexcom.com/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues?sessionId=SESSION_ID&minutes=1440&maxCount=1';
 
                 const session = new Soup.Session();
                 let loginMessage = Soup.Message.new('POST', dexcomLoginUrl);
-                
+
                 let requestBody = JSON.stringify({
                     "accountName": username,
                     "password": password,
@@ -83,54 +90,31 @@ export default class DexcomExtension extends Extension {
 
                 loginMessage.set_request_body_from_bytes('application/json', new GLib.Bytes(requestBody));
 
-                session.send_and_read_async(loginMessage, null, (session, result) => {
-                    try {
-                        let responseBytes = session.send_and_read_finish(result);
-                        let responseText = responseBytes.get_data();
-                        log(`Received login response: ${responseText}`);  // Yanıtı loglayarak kontrol et
+                session.send_async(loginMessage, null, null, (session, result) => {
+                    let response = session.send_finish(result);
+                    if (response.status_code !== 200) {
+                        reject(new Error(`Login failed with status ${response.status_code}`));
+                        return;
+                    }
+                    let sessionId = response.response_body.data.trim();
+                    log(`Session ID retrieved: ${sessionId}`);
 
-                        let response = JSON.parse(responseText);
-                        if (!response || response.status_code !== 200) {
-                            logError(`Login failed with status ${response?.status_code}`);
-                            reject(new Error(`Login failed with status ${response?.status_code || "undefined"}`));
+                    let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
+                    session.send_async(glucoseMessage, null, null, (session, result) => {
+                        let glucoseResponse = session.send_finish(result);
+                        if (glucoseResponse.status_code !== 200) {
+                            reject(new Error(`Glucose data fetch failed with status ${glucoseResponse.status_code}`));
                             return;
                         }
 
-                        let sessionId = response.trim();
-                        log(`Session ID retrieved: ${sessionId}`);
-
-                        let glucoseMessage = Soup.Message.new('GET', dexcomGlucoseUrl.replace('SESSION_ID', sessionId));
-
-                        session.send_and_read_async(glucoseMessage, null, (session, result) => {
-                            try {
-                                let glucoseResponseBytes = session.send_and_read_finish(result);
-                                let glucoseResponseText = glucoseResponseBytes.get_data();
-                                log(`Glucose response received: ${glucoseResponseText}`);  // Glucose verisi loglanıyor
-
-                                let glucoseData = JSON.parse(glucoseResponseText);
-                                resolve(glucoseData[0]);
-                            } catch (e) {
-                                logError(`Error processing glucose response: ${e}`);
-                                reject(e);
-                            }
-                        });
-                    } catch (e) {
-                        logError(`Error during login: ${e}`);
-                        reject(e);
-                    }
-                });
-            } catch (e) {
-                logError(`Error during data fetch: ${e}`);
-                reject(e);
+                        let glucoseData = JSON.parse(glucoseResponse.response_body.data);
+                        log(`Glucose data received: ${glucoseResponse.response_body.data}`);
+                        resolve(glucoseData[0]);
+                    }, null);
+                }, null);
+            } catch (error) {
+                reject(error);
             }
-        }).catch(error => {
-            logError(`Unhandled error in _fetchGlucoseData: ${error}`);
         });
-    }
-
-    // Log verilerini dosyaya yazma fonksiyonu
-    _logToFile(data) {
-        let file = Gio.File.new_for_path("/tmp/dexcom_data.log");
-        file.replace_contents(data + '\n', null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
     }
 }
