@@ -73,6 +73,14 @@ Contributions to the Dexcom Blood Glucose Monitor extension are welcome! Feel fr
 2. Create a new branch for your feature or bug fix.
 3. Submit a pull request detailing your changes.
 
+## Dexcom Servers
+https://uam1.dexcom.com/ US users
+https://uam2.dexcom.com/ users outside of the US
+https://github.com/gagebenne/pydexcom/issues/55
+
+https://share2.dexcom.com/ShareWebServices/Services US users
+https://shareous1.dexcom.com/ShareWebServices/Services users outside of the US
+
 ## License
 
 This extension is licensed under the MIT License. See the `LICENSE` file for details.
