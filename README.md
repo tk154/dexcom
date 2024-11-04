@@ -1,86 +1,94 @@
 ![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.dexcom)
+> ⚠️ **WARNING:** This Dexcom Gnome Shell extension project is currently in development and is not yet operational.
 
-# Dexcom Blood Glucose Monitor for GNOME Shell
 
-**Dexcom Blood Glucose Monitor** is a GNOME Shell extension that integrates with the Dexcom Share API to display real-time blood glucose levels in the GNOME top bar. The extension provides visual alerts with color-coded indicators based on glucose thresholds, ensuring that users are promptly notified of significant changes in their glucose levels.
+# Dexcom Blood Glucose Monitor GNOME Shell Extension
+
+## Overview
+
+The Dexcom Blood Glucose Monitor is a GNOME Shell extension that seamlessly integrates with Dexcom Share to display real-time blood glucose levels in the top panel. It provides visual alerts based on glucose thresholds for effective glucose monitoring.
 
 ## Features
 
-- **Real-Time Monitoring**: Seamless integration with Dexcom Share API to display live blood glucose readings.
-- **Color-Coded Alerts**: The glucose value in the top bar is color-coded based on thresholds:
-  - **Green**: Glucose level is between 90 mg/dL and 210 mg/dL (normal).
-  - **Yellow**: Glucose level is above 210 mg/dL (high).
-  - **Red**: Glucose level is below 90 mg/dL (low).
-- **Automatic Updates**: Blood glucose readings are refreshed automatically every 3 minutes.
-- **Minimal Interface**: A clean, non-intrusive design that integrates into the GNOME Shell's top panel.
+- **Real-time Monitoring:** Displays your current blood glucose level directly in the GNOME top panel.
+- **Visual Alerts:** Changes the color of the glucose value based on thresholds:
+  - Green: Normal range (90 - 210 mg/dL)
+  - Yellow: High glucose level (≥ 210 mg/dL)
+  - Red: Low glucose level (< 90 mg/dL)
+- **Automatic Updates:** Fetches new glucose data every 3 minutes.
+- **User Preferences:** Allows you to set your Dexcom account username and password.
 
 ## Installation
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/faymaz/dexcom.git
-   ```
-2. **Move the Extension**:
-   Copy the cloned extension to your GNOME extensions directory:
-   ```bash
-   cp -r gnome-dexcom-monitor ~/.local/share/gnome-shell/extensions/dexcom@faymaz/
-   ```
-3. **Restart GNOME Shell**:
-   To apply changes, press `Alt + F2`, type `r`, and press Enter. This will restart GNOME Shell.
+1. **Clone the Repository:**
 
-4. **Enable the Extension**:
-   Use GNOME Tweaks or the GNOME Extensions app to enable the extension.
+   ```bash
+   git clone https://github.com/faymaz/dexcom.git dexcom@faymaz
+   ```
+
+2. **Install the Extension:**
+
+   Copy the extension folder to your local GNOME Shell extensions directory:
+
+   ```bash
+   cp -r dexcom@faymaz ~/.local/share/gnome-shell/extensions/
+   ```
+
+3. **Enable the Extension:**
+
+   - Use a tool like `gnome-extensions-app` or `gnome-tweaks` to enable the "Dexcom Blood Glucose Monitor" extension.
+   - Alternatively, you can enable it via the command line:
+
+     ```bash
+     gnome-extensions enable dexcom@faymaz
+     ```
+
+4. **Restart GNOME Shell:**
+
+   - Press `Alt + F2`, type `r`, and press `Enter` (This works on Xorg sessions).
+   - For Wayland sessions, you need to log out and log back in.
 
 ## Configuration
 
-1. Open the `extension.js` file located in the extension folder.
-2. Edit the following lines to include your Dexcom Share account credentials:
-   ```javascript
-   const USERNAME = 'your_username';
-   const PASSWORD = 'your_password';
-   ```
-   Make sure your Dexcom Share credentials are correctly set up.
+1. **Open Preferences:**
 
-## Usage
+   - Right-click on the glucose monitor icon in the top panel and select "Preferences".
+   - Or use `gnome-extensions prefs dexcom@faymaz` from the command line.
 
-Once the extension is enabled, your current blood glucose reading will be displayed in the GNOME top bar. The color of the text will change based on the glucose level, allowing you to quickly assess your current status.
+2. **Set Your Dexcom Credentials:**
 
-- **Green**: Normal glucose range (90-210 mg/dL).
-- **Yellow**: High glucose level (above 210 mg/dL).
-- **Red**: Low glucose level (below 90 mg/dL).
-
-The readings are updated every 3 minutes, ensuring you always have up-to-date information on your blood glucose levels.
+   - Enter your Dexcom account username and password.
+   - **Note:** Your credentials are stored using GNOME's settings system, which is not encrypted. Be cautious about security.
 
 ## Requirements
 
-- A Dexcom Share account.
-- GNOME Shell version 3.36 or higher.
-- Internet connection to fetch real-time glucose data.
+- **GNOME Shell 46** or later.
+- **Dexcom Account:** You need a valid Dexcom Share account to use this extension.
+
+## Disclaimer
+
+- **Security Warning:** This extension stores your Dexcom account credentials in plain text within GNOME's settings system. Use at your own risk.
+- **Not Affiliated with Dexcom:** This project is not affiliated with Dexcom, Inc. Use of this extension is at your own discretion.
+- **API Usage:** Ensure that you comply with Dexcom's terms of service when using this extension.
 
 ## Troubleshooting
 
-If you encounter issues with the extension, you can troubleshoot by reviewing the GNOME Shell logs. To view the logs, use the following command:
-```bash
-journalctl -f /usr/bin/gnome-shell
-```
+- **Extension Not Showing Up:** Make sure you've copied the extension to the correct directory and that GNOME Shell recognizes it.
+- **Logs and Errors:** You can check GNOME Shell logs for errors using:
 
-Any errors related to the extension will be displayed in the logs. Additionally, you can use GNOME's built-in debugging tool, Looking Glass (`Alt + F2` -> `lg`), to check for errors or run JavaScript code in real-time.
+  ```bash
+  journalctl /usr/bin/gnome-shell -f -o cat
+  ```
 
 ## Contributing
 
-Contributions to the Dexcom Blood Glucose Monitor extension are welcome! Feel free to submit pull requests, report bugs, or suggest new features. To contribute:
-1. Fork the repository.
-2. Create a new branch for your feature or bug fix.
-3. Submit a pull request detailing your changes.
-
-## Dexcom Servers
-https://uam1.dexcom.com/ US users
-https://uam2.dexcom.com/ users outside of the US
-https://github.com/gagebenne/pydexcom/issues/55
-
-https://share2.dexcom.com/ShareWebServices/Services US users
-https://shareous1.dexcom.com/ShareWebServices/Services users outside of the US
+Contributions are welcome! Please open an issue or submit a pull request on GitHub.
 
 ## License
 
-This extension is licensed under the MIT License. See the `LICENSE` file for details.
+[MIT License](LICENSE)
+
+## Author
+
+- [faymaz](https://github.com/faymaz)
+```
