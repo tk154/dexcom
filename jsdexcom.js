@@ -2,16 +2,17 @@
 'use strict';
 
 export class DexcomClient {
-    constructor(username, password, region = 'US', unit = 'mg/dL') {
+    constructor(username, password, region = 'Non-US', unit = 'mg/dL') {
         this._username = username;
         this._password = password;
         this._region = region;
         this._unit = unit;
         this._sessionId = null;
         this._baseUrl = this._getBaseUrl();
-    }
+}
 
     _getBaseUrl() {
+        // Default to EU server
         return this._region === 'US' 
             ? 'https://share2.dexcom.com/ShareWebServices/Services'
             : 'https://shareous1.dexcom.com/ShareWebServices/Services';

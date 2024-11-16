@@ -16,7 +16,8 @@ export default class DexcomPreferences extends ExtensionPreferences {
 
         // Account settings
         const accountGroup = new Adw.PreferencesGroup({
-            title: 'Dexcom Account Settings'
+            title: 'Dexcom Account Settings',
+            description: 'Enter your Dexcom Share credentials'
         });
         page.add(accountGroup);
 
@@ -45,6 +46,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
             text: settings.get_string('password'),
             valign: Gtk.Align.CENTER,
             visibility: false,
+            input_purpose: Gtk.InputPurpose.PASSWORD,
             hexpand: true
         });
         passwordEntry.connect('changed', (entry) => {
@@ -55,7 +57,8 @@ export default class DexcomPreferences extends ExtensionPreferences {
 
         // Display settings
         const displayGroup = new Adw.PreferencesGroup({
-            title: 'Display Settings'
+            title: 'Display Settings',
+            description: 'Customize how glucose values are displayed'
         });
         page.add(displayGroup);
 
@@ -65,12 +68,12 @@ export default class DexcomPreferences extends ExtensionPreferences {
             subtitle: 'Select your Dexcom Share region'
         });
         const regionDropdown = new Gtk.DropDown({
-            model: new Gtk.StringList({ strings: ['US', 'Non-US'] }),
+            model: new Gtk.StringList({ strings: ['Non-US', 'US'] }), // Note the order change
             valign: Gtk.Align.CENTER,
-            selected: settings.get_string('region') === 'US' ? 0 : 1
+            selected: settings.get_string('region') === 'Non-US' ? 0 : 1
         });
         regionDropdown.connect('notify::selected', (dropdown) => {
-            settings.set_string('region', dropdown.selected === 0 ? 'US' : 'Non-US');
+            settings.set_string('region', dropdown.selected === 0 ? 'Non-US' : 'US');
         });
         regionRow.add_suffix(regionDropdown);
         displayGroup.add(regionRow);
@@ -90,5 +93,72 @@ export default class DexcomPreferences extends ExtensionPreferences {
         });
         unitRow.add_suffix(unitDropdown);
         displayGroup.add(unitRow);
+
+        // Thresholds group
+        const thresholdsGroup = new Adw.PreferencesGroup({
+            title: 'Glucose Thresholds',
+            description: 'Set glucose level thresholds for color indicators'
+        });
+        page.add(thresholdsGroup);
+
+        // Low threshold
+        const lowThresholdRow = new Adw.ActionRow({
+            title: 'Low Glucose Threshold',
+            subtitle: 'Values below this will be shown in red (mg/dL)'
+        });
+        const lowThresholdSpinButton = new Gtk.SpinButton({
+            adjustment: new Gtk.Adjustment({
+                lower: 40,
+                upper: 100,
+                step_increment: 1,
+                value: settings.get_int('low-threshold')
+            }),
+            valign: Gtk.Align.CENTER
+        });
+        lowThresholdSpinButton.connect('value-changed', (button) => {
+            settings.set_int('low-threshold', button.get_value());
+        });
+        lowThresholdRow.add_suffix(lowThresholdSpinButton);
+        thresholdsGroup.add(lowThresholdRow);
+
+        // High threshold
+        const highThresholdRow = new Adw.ActionRow({
+            title: 'High Glucose Threshold',
+            subtitle: 'Values above this will be shown in yellow (mg/dL)'
+        });
+        const highThresholdSpinButton = new Gtk.SpinButton({
+            adjustment: new Gtk.Adjustment({
+                lower: 120,
+                upper: 300,
+                step_increment: 1,
+                value: settings.get_int('high-threshold')
+            }),
+            valign: Gtk.Align.CENTER
+        });
+        highThresholdSpinButton.connect('value-changed', (button) => {
+            settings.set_int('high-threshold', button.get_value());
+        });
+        highThresholdRow.add_suffix(highThresholdSpinButton);
+        thresholdsGroup.add(highThresholdRow);
+
+        // Update interval
+        const updateIntervalRow = new Adw.ActionRow({
+            title: 'Update Interval',
+            subtitle: 'How often to update the glucose value (in seconds)'
+        });
+        const updateIntervalSpinButton = new Gtk.SpinButton({
+            adjustment: new Gtk.Adjustment({
+                lower: 180,  // minimum 3 minutes
+                upper: 900,  // maximum 15 minutes
+                step_increment: 60,
+                value: settings.get_int('update-interval')
+            }),
+            valign: Gtk.Align.CENTER
+        });
+        updateIntervalSpinButton.connect('value-changed', (button) => {
+            settings.set_int('update-interval', button.get_value());
+        });
+        updateIntervalRow.add_suffix(updateIntervalSpinButton);
+        displayGroup.add(updateIntervalRow);
     }
 }
