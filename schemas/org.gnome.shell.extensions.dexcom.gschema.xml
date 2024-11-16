@@ -1,14 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.dexcom" path="/org/gnome/shell/extensions/dexcom/">
-    <key name="username" type="s">
-      <default>""</default>
-      <summary>Dexcom Username</summary>
-      <description>Dexcom account username.</description>
-    </key>
-    <key name="password" type="s">
-      <default>""</default>
-      <summary>Dexcom Password</summary>
-      <description>Dexcom account password.</description>
-    </key>
-  </schema>
+    <schema id="org.gnome.shell.extensions.dexcom" path="/org/gnome/shell/extensions/dexcom/">
+        <key name="username" type="s">
+            <default>""</default>
+            <summary>Dexcom Username</summary>
+            <description>Dexcom Share account username</description>
+        </key>
+        <key name="password" type="s">
+            <default>""</default>
+            <summary>Dexcom Password</summary>
+            <description>Dexcom Share account password</description>
+        </key>
+        <key name="region" type="s">
+            <default>"US"</default>
+            <summary>Dexcom Region</summary>
+            <description>Dexcom Share server region (US or Non-US)</description>
+        </key>
+        <key name="unit" type="s">
+            <default>"mg/dL"</default>
+            <summary>Glucose Unit</summary>
+            <description>Preferred glucose unit (mg/dL or mmol/L)</description>
+        </key>
+    </schema>
 </schemalist>
