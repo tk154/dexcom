@@ -12,7 +12,7 @@
             <description>Dexcom Share account password</description>
         </key>
         <key name="region" type="s">
-            <default>"US"</default>
+            <default>"Non-US"</default>
             <summary>Dexcom Region</summary>
             <description>Dexcom Share server region (US or Non-US)</description>
         </key>
@@ -20,6 +20,21 @@
             <default>"mg/dL"</default>
             <summary>Glucose Unit</summary>
             <description>Preferred glucose unit (mg/dL or mmol/L)</description>
+        </key>
+        <key name="update-interval" type="i">
+            <default>300</default>
+            <summary>Update Interval</summary>
+            <description>How often to update the glucose value (in seconds)</description>
+        </key>
+        <key name="low-threshold" type="i">
+            <default>70</default>
+            <summary>Low Glucose Threshold</summary>
+            <description>Threshold for low glucose warning (in mg/dL)</description>
+        </key>
+        <key name="high-threshold" type="i">
+            <default>180</default>
+            <summary>High Glucose Threshold</summary>
+            <description>Threshold for high glucose warning (in mg/dL)</description>
         </key>
     </schema>
 </schemalist>
