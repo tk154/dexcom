@@ -1,6 +1,11 @@
 ![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.dexcom)
 > ⚠️ **WARNING:** This Dexcom Gnome Shell extension project is currently in development and is not yet operational.
 
+![Dexcom Gnome Shell - 1](img/Dexcom_1.png)
+
+![Dexcom Gnome Shell - 2](img/Dexcom_2.png)
+
+![Dexcom - Configuration Menu](img/Dexcom_config_menu.png)
 
 # Dexcom Blood Glucose Monitor GNOME Shell Extension
 
@@ -87,6 +92,10 @@ Contributions are welcome! Please open an issue or submit a pull request on GitH
 ## License
 
 [MIT License](LICENSE)
+
+## Disclaimer
+
+This project is not affiliated with Dexcom, Inc. Use at your own risk. Do not use this library for making medical decisions. Always verify glucose values using your official Dexcom receiver or app.
 
 ## Author
 
