@@ -5,6 +5,10 @@
 
 ![Dexcom Gnome Shell - 2](img/Dexcom_2.png)
 
+![Dexcom Gnome Shell - 3](img/Dexcom_3.png)
+
+![Dexcom Gnome Shell - 4](img/Dexcom_4.png)
+
 ![Dexcom - Configuration Menu](img/Dexcom_config_menu.png)
 
 # Dexcom Blood Glucose Monitor GNOME Shell Extension

@@ -27,12 +27,24 @@ class DexcomIndicator extends PanelMenu.Button {
             style_class: 'panel-status-menu-box'
         });
 
-        // Use system icon
-        this.icon = new St.Icon({
-            icon_name: 'utilities-system-monitor-symbolic',
-            style_class: 'system-status-icon',
-            icon_size: 16
-        });
+        // Load custom SVG icon
+        const iconPath = GLib.build_filenamev([extension.path, 'icons', 'icon.svg']);
+        
+        try {
+            this.icon = new St.Icon({
+                gicon: Gio.Icon.new_for_string(iconPath),
+                style_class: 'system-status-icon dexcom-icon',
+                icon_size: 20  // Adjust size as needed
+            });
+            log(`[Dexcom] Loaded custom icon from: ${iconPath}`);
+        } catch (error) {
+            log(`[Dexcom] Failed to load icon: ${error}. Using fallback.`);
+            this.icon = new St.Icon({
+                icon_name: 'utilities-system-monitor-symbolic',
+                style_class: 'system-status-icon',
+                icon_size: 20
+            });
+        }
 
         // Add label with spacing
         this.label = new St.Label({
@@ -41,10 +53,17 @@ class DexcomIndicator extends PanelMenu.Button {
             style: 'margin-left: 5px;'
         });
 
+        // Add style for custom icon
+        let theme = St.ThemeContext.get_for_stage(global.stage);
+        if (theme) {
+            St.Settings.get().connect('notify::high-contrast', () => {
+                this._updateIconContrast();
+            });
+        }
+
         this.box.add_child(this.icon);
         this.box.add_child(this.label);
         this.add_child(this.box);
-
         this._buildMenu();
 
         // Start initialization after a short delay
@@ -52,6 +71,37 @@ class DexcomIndicator extends PanelMenu.Button {
             this._initClient();
             return GLib.SOURCE_REMOVE;
         });
+    }
+
+
+    _updateIconContrast() {
+        // Update icon visibility based on theme contrast
+        const highContrast = St.Settings.get().high_contrast;
+        if (this.icon) {
+            this.icon.opacity = highContrast ? 255 : 200;
+        }
+    }
+
+    // Add this style to ensure icon is properly sized and colored
+    _addCustomStyle() {
+        // You can add this CSS to your stylesheet if you have one
+        const style = `
+            .dexcom-icon {
+                width: 20px;
+                height: 20px;
+                -st-icon-style: symbolic;
+            }
+        `;
+        
+        const theme = St.ThemeContext.get_for_stage(global.stage);
+        if (theme && theme.get_theme()) {
+            const customStylesheet = new St.Theme({
+                application_stylesheet: new Gio.MemoryInputStream({
+                    bytes: new GLib.Bytes(style),
+                }),
+            });
+            theme.get_theme().copy_custom_stylesheets(customStylesheet);
+        }
     }
 
     _buildMenu() {
