@@ -100,4 +100,4 @@ This project is not affiliated with Dexcom, Inc. Use at your own risk. Do not us
 ## Author
 
 - [faymaz](https://github.com/faymaz)
-```
+
