@@ -1,0 +1,18 @@
+/* Extension styling */
+.dexcom-icon {
+    margin-right: 5px;
+    width: 16px;
+    height: 16px;
+}
+
+.dexcom-label {
+    margin-left: 5px;
+}
+
+.dexcom-menu-item {
+    padding: 8px;
+}
+
+.dexcom-settings-button {
+    margin-top: 10px;
+}
