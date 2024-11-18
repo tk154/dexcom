@@ -13,74 +13,73 @@
 
 ![Dexcom - Configuration Menu](img/Dexcom_config_menu.png)
 
-# Dexcom Blood Glucose Monitor GNOME Shell Extension
+# Dexcom Blood Glucose Monitor GNOME Extension
 
-## Overview
+A GNOME Shell extension that displays real-time blood glucose levels from Dexcom Share in your GNOME top panel.
 
-The Dexcom Blood Glucose Monitor is a GNOME Shell extension that seamlessly integrates with Dexcom Share to display real-time blood glucose levels in the top panel. It provides visual alerts based on glucose thresholds for effective glucose monitoring.
+**Important Notice:** This extension is not affiliated, funded, or in any way associated with Dexcom.
 
 ## Features
 
-- **Real-time Monitoring:** Displays your current blood glucose level directly in the GNOME top panel.
-- **Visual Alerts:** Changes the color of the glucose value based on thresholds:
-  - Green: Normal range (90 - 210 mg/dL)
-  - Yellow: High glucose level (≥ 210 mg/dL)
-  - Red: Low glucose level (< 90 mg/dL)
-- **Automatic Updates:** Fetches new glucose data every 3 minutes.
-- **User Preferences:** Allows you to set your Dexcom account username and password.
+- Real-time blood glucose level display in GNOME top panel
+- Visual alerts based on customizable glucose thresholds
+- Support for both mg/dL and mmol/L units
+- Trend arrows showing glucose direction
+- Configurable update intervals
+- Support for both US and Non-US Dexcom servers
 
 ## Installation
 
-1. **Clone the Repository:**
+### From GNOME Extensions Website
+1. Visit [GNOME Extensions](https://extensions.gnome.org)
+2. Search for "Dexcom Blood Glucose Monitor"
+3. Click "Install"
 
+### Manual Installation
+1. Clone this repository:
    ```bash
-   git clone https://github.com/faymaz/dexcom.git dexcom@faymaz
+   git clone https://github.com/faymaz/dexcom
    ```
-
-2. **Install the Extension:**
-
-   Copy the extension folder to your local GNOME Shell extensions directory:
-
+2. Copy to GNOME extensions directory:
    ```bash
-   cp -r dexcom@faymaz ~/.local/share/gnome-shell/extensions/
+   cp -r dexcom ~/.local/share/gnome-shell/extensions/dexcom@faymaz
    ```
-
-3. **Enable the Extension:**
-
+3. Restart GNOME Shell:
+   - Press Alt+F2
+   - Type 'r'
+   - Press Enter
+   - For Wayland sessions, you need to log out and log back in.
+4. Enable the extension using GNOME Extensions app or over CMD Line
    - Use a tool like `gnome-extensions-app` or `gnome-tweaks` to enable the "Dexcom Blood Glucose Monitor" extension.
    - Alternatively, you can enable it via the command line:
 
      ```bash
      gnome-extensions enable dexcom@faymaz
-     ```
-
-4. **Restart GNOME Shell:**
-
-   - Press `Alt + F2`, type `r`, and press `Enter` (This works on Xorg sessions).
-   - For Wayland sessions, you need to log out and log back in.
-
+     ``` 
 ## Configuration
 
-1. **Open Preferences:**
+1. Open GNOME Extensions app
+2. Find "Dexcom Blood Glucose Monitor" and click settings
+3. Configure:
+   - Dexcom Share username and password
+   - Region (US or Non-US)
+   - Preferred unit (mg/dL or mmol/L)
+   - Update interval
+   - High/Low glucose thresholds
 
-   - Right-click on the glucose monitor icon in the top panel and select "Preferences".
-   - Or use `gnome-extensions prefs dexcom@faymaz` from the command line.
+## Privacy & Security
 
-2. **Set Your Dexcom Credentials:**
+- This extension requires your Dexcom Share credentials
+- Credentials are stored securely using GNOME's GSettings
+- Data is fetched directly from Dexcom servers
+- No data is collected, stored, or transmitted to any third party
+- All communication is done securely over HTTPS
 
-   - Enter your Dexcom account username and password.
-   - **Note:** Your credentials are stored using GNOME's settings system, which is not encrypted. Be cautious about security.
+## Dependencies
 
-## Requirements
-
-- **GNOME Shell 46** or later.
-- **Dexcom Account:** You need a valid Dexcom Share account to use this extension.
-
-## Disclaimer
-
-- **Security Warning:** This extension stores your Dexcom account credentials in plain text within GNOME's settings system. Use at your own risk.
-- **Not Affiliated with Dexcom:** This project is not affiliated with Dexcom, Inc. Use of this extension is at your own discretion.
-- **API Usage:** Ensure that you comply with Dexcom's terms of service when using this extension.
+- GNOME Shell 45 or later
+- A valid Dexcom Share account with Share enabled
+- Internet connection
 
 ## Troubleshooting
 
@@ -91,19 +90,21 @@ The Dexcom Blood Glucose Monitor is a GNOME Shell extension that seamlessly inte
   journalctl /usr/bin/gnome-shell -f -o cat
   ```
 
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request on GitHub.
-
 ## License
 
-[MIT License](LICENSE)
+This extension is released under the GNU General Public License v3.0.
+
 
 ## Disclaimer
 
 This project is not affiliated with Dexcom, Inc. Use at your own risk. Do not use this library for making medical decisions. Always verify glucose values using your official Dexcom receiver or app.
 
+
+## Support
+
+For issues, feature requests, or contributions, please visit:
+[GitHub Issues](https://github.com/faymaz/dexcom/issues)
+
 ## Author
 
 - [faymaz](https://github.com/faymaz)
-
