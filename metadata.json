@@ -9,5 +9,7 @@
     "gettext-domain": "dexcom-monitor",
     "donations": {
         "github": "faymaz"
-    }
+    },
+    "icon": "icons/icon.svg",
+    "categories": ["system-monitor", "status-indicators"]
 }
