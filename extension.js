@@ -1,4 +1,3 @@
-// extension.js
 'use strict';
 
 import St from 'gi://St';
@@ -16,27 +15,24 @@ const DexcomIndicator = GObject.registerClass(
 class DexcomIndicator extends PanelMenu.Button {
     _init(settings, extension) {
         super._init(0.0, 'Dexcom Indicator');
-
         this._settings = settings;
         this._extension = extension;
-        this._timeouts = [];
+        this._timeoutSource = null;
         this._destroyed = false;
         
-        // Create container
+        // Create box layout
         this.box = new St.BoxLayout({
             style_class: 'panel-status-menu-box'
         });
 
-        // Load custom SVG icon
-        const iconPath = GLib.build_filenamev([extension.path, 'icons', 'icon.svg']);
-        
+        // Add icon
         try {
+            const iconPath = GLib.build_filenamev([extension.path, 'icons', 'icon.svg']);
             this.icon = new St.Icon({
                 gicon: Gio.Icon.new_for_string(iconPath),
                 style_class: 'system-status-icon dexcom-icon',
-                icon_size: 20  // Adjust size as needed
+                icon_size: 20
             });
-            log(`[Dexcom] Loaded custom icon from: ${iconPath}`);
         } catch (error) {
             log(`[Dexcom] Failed to load icon: ${error}. Using fallback.`);
             this.icon = new St.Icon({
@@ -46,78 +42,28 @@ class DexcomIndicator extends PanelMenu.Button {
             });
         }
 
-        // Add label with spacing
+        // Add label
         this.label = new St.Label({
             text: '...',
             y_align: Clutter.ActorAlign.CENTER,
             style: 'margin-left: 5px;'
         });
 
-        // Add style for custom icon
-        let theme = St.ThemeContext.get_for_stage(global.stage);
-        if (theme) {
-            St.Settings.get().connect('notify::high-contrast', () => {
-                this._updateIconContrast();
-            });
-        }
-
         this.box.add_child(this.icon);
         this.box.add_child(this.label);
         this.add_child(this.box);
+
         this._buildMenu();
-
-        // Start initialization after a short delay
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
-            this._initClient();
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-
-
-    _updateIconContrast() {
-        // Update icon visibility based on theme contrast
-        const highContrast = St.Settings.get().high_contrast;
-        if (this.icon) {
-            this.icon.opacity = highContrast ? 255 : 200;
-        }
-    }
-
-    // Add this style to ensure icon is properly sized and colored
-    _addCustomStyle() {
-        // You can add this CSS to your stylesheet if you have one
-        const style = `
-            .dexcom-icon {
-                width: 20px;
-                height: 20px;
-                -st-icon-style: symbolic;
-            }
-        `;
-        
-        const theme = St.ThemeContext.get_for_stage(global.stage);
-        if (theme && theme.get_theme()) {
-            const customStylesheet = new St.Theme({
-                application_stylesheet: new Gio.MemoryInputStream({
-                    bytes: new GLib.Bytes(style),
-                }),
-            });
-            theme.get_theme().copy_custom_stylesheets(customStylesheet);
-        }
+        this._initClient();
     }
 
     _buildMenu() {
-        // Last reading info
+        // Status section
+        this._statusSection = new PopupMenu.PopupMenuSection();
         this._statusItem = new PopupMenu.PopupMenuItem('Initializing...');
-        this.menu.addMenuItem(this._statusItem);
-
-        // Separator
+        this._statusSection.addMenuItem(this._statusItem);
+        this.menu.addMenuItem(this._statusSection);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        // Reconnect button
-        const reconnectItem = new PopupMenu.PopupMenuItem('Reconnect');
-        reconnectItem.connect('activate', () => {
-            this._reconnect();
-        });
-        this.menu.addMenuItem(reconnectItem);
 
         // Settings button
         const settingsItem = new PopupMenu.PopupMenuItem('Settings');
@@ -125,15 +71,6 @@ class DexcomIndicator extends PanelMenu.Button {
             this._extension.openPreferences();
         });
         this.menu.addMenuItem(settingsItem);
-
-        // Add settings changed handler
-        this._settingsChangedId = this._settings.connect('changed', () => {
-            this._onSettingsChanged();
-        });
-    }
-
-    _onSettingsChanged() {
-        this._reconnect();
     }
 
     async _initClient() {
@@ -145,42 +82,31 @@ class DexcomIndicator extends PanelMenu.Button {
         const unit = this._settings.get_string('unit');
 
         if (!username || !password) {
-            this._updateUI('⚠️ Check Settings', 'red', 'Missing credentials');
+            this._updateUI('⚠️ Set credentials', 'red', 'Missing credentials');
             return;
         }
 
         try {
-            this._client = new DexcomClient(
-                username,
-                password,
-                region === 'US' ? 'us' : 'ous',
-                unit
-            );
-
-            this._updateUI('Connecting...', 'inherit', 'Authenticating...');
-            
-            const sessionId = await this._client.authenticate();
-            if (!sessionId) throw new Error('Authentication failed');
-            
+            this._client = new DexcomClient(username, password, region, unit);
+            await this._client.authenticate();
             this._startPolling();
         } catch (error) {
             this._handleError(error);
-            this._scheduleReconnect();
         }
     }
 
     _startPolling() {
         if (this._destroyed) return;
 
-        // Clear existing timeouts
-        this._clearTimeouts();
+        // Clear existing timeout
+        this._removeTimeout();
 
         // Initial update
         this._updateGlucose();
 
-        // Schedule updates
+        // Set up periodic updates
         const interval = this._settings.get_int('update-interval');
-        const timeoutId = GLib.timeout_add_seconds(
+        this._timeoutSource = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT,
             interval,
             () => {
@@ -191,7 +117,13 @@ class DexcomIndicator extends PanelMenu.Button {
                 return GLib.SOURCE_REMOVE;
             }
         );
-        this._timeouts.push(timeoutId);
+    }
+
+    _removeTimeout() {
+        if (this._timeoutSource) {
+            GLib.source_remove(this._timeoutSource);
+            this._timeoutSource = null;
+        }
     }
 
     async _updateGlucose() {
@@ -199,23 +131,14 @@ class DexcomIndicator extends PanelMenu.Button {
 
         try {
             const reading = await this._client.getLatestGlucose();
-            
-            if (!reading || !reading.value) {
-                this._updateUI('No data', 'inherit', 'No readings available');
-                return true;
-            }
-
-            // Update display
             const displayText = `${reading.value} ${reading.unit} ${reading.trendArrow}`;
-            const timestamp = reading.timestamp.toLocaleTimeString();
             
-            // Get thresholds
+            // Determine color based on thresholds
+            const value = parseFloat(reading.value);
             const lowThreshold = this._settings.get_int('low-threshold');
             const highThreshold = this._settings.get_int('high-threshold');
             
-            // Determine color
             let color;
-            const value = parseFloat(reading.value);
             if (reading.unit === 'mmol/L') {
                 if (value < lowThreshold/18.0) color = 'red';
                 else if (value > highThreshold/18.0) color = 'yellow';
@@ -226,9 +149,8 @@ class DexcomIndicator extends PanelMenu.Button {
                 else color = '#00ff00';
             }
 
-            this._updateUI(displayText, color, `Last update: ${timestamp}`);
+            this._updateUI(displayText, color, `Last update: ${reading.timestamp.toLocaleTimeString()}`);
             return true;
-
         } catch (error) {
             this._handleError(error);
             return true;
@@ -239,14 +161,12 @@ class DexcomIndicator extends PanelMenu.Button {
         if (this._destroyed) return;
         
         try {
-            // Update main label safely
-            if (this.label && this.label.text !== undefined) {
+            if (this.label) {
                 this.label.text = labelText;
                 this.label.style = `margin-left: 5px; color: ${color};`;
             }
             
-            // Update status safely
-            if (this._statusItem && this._statusItem.label) {
+            if (this._statusItem) {
                 this._statusItem.label.text = statusText;
             }
         } catch (error) {
@@ -257,60 +177,16 @@ class DexcomIndicator extends PanelMenu.Button {
     _handleError(error) {
         const errorMessage = error.message || 'Unknown error';
         log(`[Dexcom] Error: ${errorMessage}`);
-
-        if (errorMessage.includes('SessionIdNotFound') || 
-            errorMessage.includes('Invalid session') ||
-            errorMessage.includes('password failed')) {
-            this._updateUI('⚠️ Auth Error', 'red', 'Authentication failed');
-            this._scheduleReconnect();
-        } else {
-            this._updateUI('⚠️ Error', 'red', `Error: ${errorMessage}`);
-            this._scheduleReconnect();
-        }
-    }
-
-    _scheduleReconnect() {
-        if (this._destroyed) return;
-
-        const timeoutId = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT,
-            30,
-            () => {
-                if (!this._destroyed) {
-                    this._reconnect();
-                }
-                return GLib.SOURCE_REMOVE;
-            }
-        );
-        this._timeouts.push(timeoutId);
-    }
-
-    async _reconnect() {
-        if (this._destroyed) return;
-        
-        this._clearTimeouts();
-        this._client = null;
-        this._updateUI('Reconnecting...', 'inherit', 'Reconnecting to Dexcom...');
-        await this._initClient();
-    }
-
-    _clearTimeouts() {
-        this._timeouts.forEach(id => {
-            if (id) GLib.source_remove(id);
-        });
-        this._timeouts = [];
+        this._updateUI('⚠️ Error', 'red', `Error: ${errorMessage}`);
     }
 
     destroy() {
         this._destroyed = true;
+        this._removeTimeout();
         
-        if (this._settingsChangedId) {
-            this._settings.disconnect(this._settingsChangedId);
-            this._settingsChangedId = null;
+        if (this._client) {
+            this._client = null;
         }
-        
-        this._clearTimeouts();
-        this._client = null;
         
         super.destroy();
     }

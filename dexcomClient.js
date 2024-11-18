@@ -1,8 +1,8 @@
 // dexcomClient.js
 'use strict';
 
-import Soup from 'gi://Soup?version=3.0';
 import GLib from 'gi://GLib';
+import Soup from 'gi://Soup';
 import Gio from 'gi://Gio';
 
 export class DexcomClient {
