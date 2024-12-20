@@ -182,10 +182,15 @@ class DexcomIndicator extends PanelMenu.Button {
         this._updateReading();
     }
     
-    // Start monitoring glucose updates
+    // Update _startMonitoring function in extension.js
     _startMonitoring() {
         // Initial reading
         this._updateReading();
+        
+        // Clear any existing interval
+        if (this._timeout) {
+            clearInterval(this._timeout);
+        }
         
         // Set up interval for periodic updates
         this._timeout = setInterval(() => {
@@ -359,44 +364,6 @@ class DexcomIndicator extends PanelMenu.Button {
         }
     }
 
-    
-    // _buildMenu() {
-    //     // Glucose info section
-    //     this.glucoseInfo = new PopupMenu.PopupMenuItem('Loading...', {
-    //         reactive: false,
-    //         style_class: 'dexcom-menu-item'
-    //     });
-    //     this.menu.addMenuItem(this.glucoseInfo);
-    
-    //     // Add separator
-    //     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-    
-    //     // Display options
-    //     const displayOptionsLabel = new PopupMenu.PopupMenuItem('Display Options:', {
-    //         reactive: false,
-    //         style_class: 'dexcom-menu-header'
-    //     });
-    //     this.menu.addMenuItem(displayOptionsLabel);
-    
-    //     this._addToggleMenuItem('Show Delta', 'show-delta');
-    //     this._addToggleMenuItem('Show Trend Arrows', 'show-trend-arrows');
-    //     this._addToggleMenuItem('Show Elapsed Time', 'show-elapsed-time');
-    //     this._addToggleMenuItem('Show Icon', 'show-icon');
-    
-    //     // Add separator
-    //     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-    
-    //     // Add settings button
-    //     const settingsButton = new PopupMenu.PopupMenuItem('Open Settings', {
-    //         style_class: 'dexcom-settings-button'
-    //     });
-    //     settingsButton.connect('activate', () => {
-    //         if (this.extension) {
-    //             this.extension.openPreferences();
-    //         }
-    //     });
-    //     this.menu.addMenuItem(settingsButton);
-    // }
     _buildMenu() {
         // Glucose info section
         this.glucoseInfo = new PopupMenu.PopupMenuItem('Loading...', {
@@ -462,37 +429,63 @@ class DexcomIndicator extends PanelMenu.Button {
         return 'bg-urgent-low';
     }
     
+    // Update _updateMenuInfo function in extension.js
     _updateMenuInfo(reading) {
-        if (!reading) {
-            this.glucoseInfo.label.text = 'No data available';
-            return;
-        }
-
-        const unit = this._settings.get_string('unit');
-        const timestamp = new Date(reading.timestamp).toLocaleTimeString();
-        
-        let info = `Last Reading: ${reading.value} ${unit}\n`;
-        info += `Time: ${timestamp}\n`;
-        info += `Trend: ${reading.trend}\n`;
-        info += `Delta: ${reading.delta > 0 ? '+' : ''}${reading.delta} ${unit}`;
-
-        this.glucoseInfo.label.text = info;
+    if (!reading) {
+        this.glucoseInfo.label.text = 'No data available';
+        return;
     }
 
+    const unit = this._settings.get_string('unit');
+    const time = new Date(reading.timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+
+    // Updated trend mapping
+    const trendMap = {
+        'NONE': 'Stable',
+        'DOUBLE_UP': 'Rising Rapidly',
+        'SINGLE_UP': 'Rising',
+        'FORTY_FIVE_UP': 'Rising Slowly',
+        'FLAT': 'Stable',
+        'FORTY_FIVE_DOWN': 'Falling Slowly',
+        'SINGLE_DOWN': 'Falling',
+        'DOUBLE_DOWN': 'Falling Rapidly',
+        'NOT_COMPUTABLE': 'Unable to Determine',
+        'RATE_OUT_OF_RANGE': 'Out of Range'
+    };
+
+    const trendStr = String(reading.trend).toUpperCase();
+    const trendDescription = trendMap[trendStr] || 'Unknown';
+
+    const info = [
+        `Last Reading: ${reading.value} ${unit}`,
+        `Time: ${time}`,
+        `Trend: ${trendDescription}`,
+        `Delta: ${reading.delta > 0 ? '+' : ''}${reading.delta} ${unit}`
+    ].join('\n');
+
+    this.glucoseInfo.label.text = info;
+    }
+    
     _getTrendArrow(trend) {
+        // Make sure trend is a string and uppercase
+        const trendStr = String(trend).toUpperCase();
         const arrows = {
-            NONE: '→',
-            DOUBLE_UP: '⇈',
-            SINGLE_UP: '↑',
-            FORTY_FIVE_UP: '↗',
-            FLAT: '→',
-            FORTY_FIVE_DOWN: '↘',
-            SINGLE_DOWN: '↓',
-            DOUBLE_DOWN: '⇊',
-            NOT_COMPUTABLE: '-',
-            RATE_OUT_OF_RANGE: '?'
+            'NONE': '→',
+            'DOUBLE_UP': '⇈',
+            'SINGLE_UP': '↑',
+            'FORTY_FIVE_UP': '↗',
+            'FLAT': '→',
+            'FORTY_FIVE_DOWN': '↘',
+            'SINGLE_DOWN': '↓',
+            'DOUBLE_DOWN': '⇊',
+            'NOT_COMPUTABLE': '-',
+            'RATE_OUT_OF_RANGE': '?'
         };
-        return arrows[trend] || arrows.NONE;
+        return arrows[trendStr] || '-';
     }
 
     destroy() {
