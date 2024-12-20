@@ -126,6 +126,17 @@ class DexcomIndicator extends PanelMenu.Button {
             this._updateReading();
         });
     }
+
+    // _updateCredentials() {
+    // this._dexcomClient = new DexcomClient(
+    //     this._settings.get_string('username'),
+    //     this._settings.get_string('password'),
+    //     this._settings.get_string('region'),
+    //     this._settings.get_string('unit')
+    // );
+    // this._updateReading();
+    // }
+    // Update credentials and reinitialize client
     _updateCredentials() {
         this._dexcomClient = new DexcomClient(
             this._settings.get_string('username'),
@@ -232,43 +243,43 @@ class DexcomIndicator extends PanelMenu.Button {
 
 
 
-    _getColorForValue(value) {
-        const urgentHigh = this._settings.get_int('urgent-high-threshold');
-        const high = this._settings.get_int('high-threshold');
-        const low = this._settings.get_int('low-threshold');
-        const urgentLow = this._settings.get_int('urgent-low-threshold');
+_getColorForValue(value) {
+    const urgentHigh = this._settings.get_int('urgent-high-threshold');
+    const high = this._settings.get_int('high-threshold');
+    const low = this._settings.get_int('low-threshold');
+    const urgentLow = this._settings.get_int('urgent-low-threshold');
 
-        // Get colors from settings
-        const urgentHighColor = this._settings.get_string('urgent-high-color');
-        const highColor = this._settings.get_string('high-color');
-        const normalColor = this._settings.get_string('normal-color');
-        const lowColor = this._settings.get_string('low-color');
-        const urgentLowColor = this._settings.get_string('urgent-low-color');
+    // Get colors from settings
+    const urgentHighColor = this._settings.get_string('urgent-high-color');
+    const highColor = this._settings.get_string('high-color');
+    const normalColor = this._settings.get_string('normal-color');
+    const lowColor = this._settings.get_string('low-color');
+    const urgentLowColor = this._settings.get_string('urgent-low-color');
 
-        let styleClass = 'dexcom-label ';
-        let color = '';
-        
-        if (value >= urgentHigh) {
-            styleClass += 'dexcom-urgent-high';
-            color = urgentHighColor;
-        } else if (value >= high) {
-            styleClass += 'dexcom-high';
-            color = highColor;
-        } else if (value > low) {
-            styleClass += 'dexcom-normal';
-            color = normalColor;
-        } else if (value > urgentLow) {
-            styleClass += 'dexcom-low';
-            color = lowColor;
-        } else {
-            styleClass += 'dexcom-urgent-low';
-            color = urgentLowColor;
-        }
-        
-        // Doğrudan stil olarak rengi uygula
-        this.buttonText.style = `color: ${color};`;
-        return styleClass;
+    let styleClass = 'dexcom-label ';
+    let color = '';
+    
+    if (value >= urgentHigh) {
+        styleClass += 'dexcom-urgent-high';
+        color = urgentHighColor;
+    } else if (value >= high) {
+        styleClass += 'dexcom-high';
+        color = highColor;
+    } else if (value > low) {
+        styleClass += 'dexcom-normal';
+        color = normalColor;
+    } else if (value > urgentLow) {
+        styleClass += 'dexcom-low';
+        color = lowColor;
+    } else {
+        styleClass += 'dexcom-urgent-low';
+        color = urgentLowColor;
     }
+    
+    // Doğrudan stil olarak rengi uygula
+    this.buttonText.style = `color: ${color};`;
+    return styleClass;
+}
 
     _updateIconVisibility() {
         // Clear existing children
@@ -360,43 +371,6 @@ class DexcomIndicator extends PanelMenu.Button {
     }
 
     
-    // _buildMenu() {
-    //     // Glucose info section
-    //     this.glucoseInfo = new PopupMenu.PopupMenuItem('Loading...', {
-    //         reactive: false,
-    //         style_class: 'dexcom-menu-item'
-    //     });
-    //     this.menu.addMenuItem(this.glucoseInfo);
-    
-    //     // Add separator
-    //     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-    
-    //     // Display options
-    //     const displayOptionsLabel = new PopupMenu.PopupMenuItem('Display Options:', {
-    //         reactive: false,
-    //         style_class: 'dexcom-menu-header'
-    //     });
-    //     this.menu.addMenuItem(displayOptionsLabel);
-    
-    //     this._addToggleMenuItem('Show Delta', 'show-delta');
-    //     this._addToggleMenuItem('Show Trend Arrows', 'show-trend-arrows');
-    //     this._addToggleMenuItem('Show Elapsed Time', 'show-elapsed-time');
-    //     this._addToggleMenuItem('Show Icon', 'show-icon');
-    
-    //     // Add separator
-    //     this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-    
-    //     // Add settings button
-    //     const settingsButton = new PopupMenu.PopupMenuItem('Open Settings', {
-    //         style_class: 'dexcom-settings-button'
-    //     });
-    //     settingsButton.connect('activate', () => {
-    //         if (this.extension) {
-    //             this.extension.openPreferences();
-    //         }
-    //     });
-    //     this.menu.addMenuItem(settingsButton);
-    // }
     _buildMenu() {
         // Glucose info section
         this.glucoseInfo = new PopupMenu.PopupMenuItem('Loading...', {
@@ -423,21 +397,6 @@ class DexcomIndicator extends PanelMenu.Button {
         // Add separator
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
     
-        // Add refresh button
-        const refreshButton = new PopupMenu.PopupMenuItem('Refresh Now', {
-            style_class: 'dexcom-refresh-button'
-        });
-        refreshButton.connect('activate', () => {
-            // Show loading indicator in menu
-            this.glucoseInfo.label.text = 'Refreshing...';
-            // Trigger immediate update
-            this._updateReading();
-        });
-        this.menu.addMenuItem(refreshButton);
-    
-        // Add separator
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-    
         // Add settings button
         const settingsButton = new PopupMenu.PopupMenuItem('Open Settings', {
             style_class: 'dexcom-settings-button'
@@ -449,6 +408,7 @@ class DexcomIndicator extends PanelMenu.Button {
         });
         this.menu.addMenuItem(settingsButton);
     }
+    
     _getBackgroundClass(value) {
         const urgentHigh = this._settings.get_int('urgent-high-threshold');
         const high = this._settings.get_int('high-threshold');

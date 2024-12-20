@@ -1,18 +1,96 @@
-/* Extension styling */
+/* stylesheet.css */
+
+.dexcom-box {
+    spacing: 4px;
+    padding: 2px 6px;
+}
+
 .dexcom-icon {
-    margin-right: 5px;
     width: 16px;
     height: 16px;
+    padding: 0;
+    margin-right: 4px;
 }
 
-.dexcom-label {
-    margin-left: 5px;
+.dexcom-value-container {
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin: 2px 0;
+    height: 1.4em;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
+.dexcom-value {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 2px;
+}
+
+.dexcom-trend {
+    font-size: 14px;
+    margin-left: 4px;
+    font-weight: bold;
+}
+
+.dexcom-delta {
+    font-size: 12px;
+    margin-left: 4px;
+}
+
+.dexcom-time {
+    font-size: 11px;
+    margin-left: 4px;
+    margin-right: 2px;
+}
+
+/* Background colors with improved visibility */
+.bg-urgent-high {
+    background-color: rgba(255, 0, 0, 0.2);
+    border-color: rgba(255, 0, 0, 0.4);
+}
+
+.bg-high {
+    background-color: rgba(255, 165, 0, 0.2);
+    border-color: rgba(255, 165, 0, 0.4);
+}
+
+.bg-normal {
+    background-color: rgba(0, 255, 0, 0.2);
+    border-color: rgba(0, 255, 0, 0.4);
+}
+
+.bg-low {
+    background-color: rgba(255, 165, 0, 0.2);
+    border-color: rgba(255, 165, 0, 0.4);
+}
+
+.bg-urgent-low {
+    background-color: rgba(255, 0, 0, 0.2);
+    border-color: rgba(255, 0, 0, 0.4);
+}
+
+/* Error state styling */
+.dexcom-error {
+    color: #ff0000;
+}
+
+/* Menu item styling */
 .dexcom-menu-item {
     padding: 8px;
 }
 
-.dexcom-settings-button {
-    margin-top: 10px;
+.dexcom-menu-header {
+    font-weight: bold;
+    padding-top: 8px;
+}
+
+.dexcom-refresh-button:hover {
+    background-color: rgba(64, 132, 214, 0.15);
+}
+
+.dexcom-refresh-button:active {
+    background-color: rgba(64, 132, 214, 0.25);
 }

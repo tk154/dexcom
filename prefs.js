@@ -1,8 +1,6 @@
-// prefs.js
-'use strict';
-
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
+import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
@@ -11,154 +9,225 @@ export default class DexcomPreferences extends ExtensionPreferences {
         const settings = this.getSettings();
 
         // Create pages
-        const page = new Adw.PreferencesPage();
-        window.add(page);
-
-        // Account settings
-        const accountGroup = new Adw.PreferencesGroup({
-            title: 'Dexcom Account Settings',
-            description: 'Enter your Dexcom Share credentials'
+        const accountPage = new Adw.PreferencesPage({
+            title: 'Account',
+            icon_name: 'system-users-symbolic',
         });
-        page.add(accountGroup);
+
+        const thresholdPage = new Adw.PreferencesPage({
+            title: 'Thresholds',
+            icon_name: 'preferences-system-symbolic',
+        });
+        
+        const displayPage = new Adw.PreferencesPage({
+            title: 'Display',
+            icon_name: 'preferences-desktop-display-symbolic',
+        });
+
+        window.add(accountPage);
+        window.add(thresholdPage);
+        window.add(displayPage);
+
+        // Add groups to pages
+        this._addAccountGroup(accountPage, settings);
+        this._addThresholdGroup(thresholdPage, settings);
+        this._addColorGroup(thresholdPage, settings);
+        this._addDisplayOptionsGroup(displayPage, settings);
+    }
+
+    _addAccountGroup(page, settings) {
+        const group = new Adw.PreferencesGroup({
+            title: 'Dexcom Share Account',
+            description: 'Enter your Dexcom Share credentials',
+        });
 
         // Username
-        const usernameRow = new Adw.ActionRow({
+        const usernameRow = new Adw.EntryRow({
             title: 'Username',
-            subtitle: 'Your Dexcom Share username'
         });
-        const usernameEntry = new Gtk.Entry({
-            text: settings.get_string('username'),
-            valign: Gtk.Align.CENTER,
-            hexpand: true
+        usernameRow.connect('changed', () => {
+            settings.set_string('username', usernameRow.get_text());
         });
-        usernameEntry.connect('changed', (entry) => {
-            settings.set_string('username', entry.get_text());
-        });
-        usernameRow.add_suffix(usernameEntry);
-        accountGroup.add(usernameRow);
+        usernameRow.set_text(settings.get_string('username'));
+        group.add(usernameRow);
 
         // Password
-        const passwordRow = new Adw.ActionRow({
+        const passwordRow = new Adw.PasswordEntryRow({
             title: 'Password',
-            subtitle: 'Your Dexcom Share password'
         });
-        const passwordEntry = new Gtk.Entry({
-            text: settings.get_string('password'),
-            valign: Gtk.Align.CENTER,
-            visibility: false,
-            input_purpose: Gtk.InputPurpose.PASSWORD,
-            hexpand: true
+        passwordRow.connect('changed', () => {
+            settings.set_string('password', passwordRow.get_text());
         });
-        passwordEntry.connect('changed', (entry) => {
-            settings.set_string('password', entry.get_text());
-        });
-        passwordRow.add_suffix(passwordEntry);
-        accountGroup.add(passwordRow);
+        passwordRow.set_text(settings.get_string('password'));
+        group.add(passwordRow);
 
-        // Display settings
-        const displayGroup = new Adw.PreferencesGroup({
-            title: 'Display Settings',
-            description: 'Customize how glucose values are displayed'
-        });
-        page.add(displayGroup);
-
-        // Region selection
-        const regionRow = new Adw.ActionRow({
-            title: 'Region',
-            subtitle: 'Select your Dexcom Share region'
-        });
-        const regionDropdown = new Gtk.DropDown({
-            model: new Gtk.StringList({ strings: ['Non-US', 'US'] }), // Note the order change
+        // Region
+        const regionRow = new Adw.ActionRow({ title: 'Region' });
+        const regionCombo = new Gtk.ComboBoxText({
             valign: Gtk.Align.CENTER,
-            selected: settings.get_string('region') === 'Non-US' ? 0 : 1
         });
-        regionDropdown.connect('notify::selected', (dropdown) => {
-            settings.set_string('region', dropdown.selected === 0 ? 'Non-US' : 'US');
+
+        regionCombo.append('US', 'United States');
+        regionCombo.append('Non-US', 'Outside US');
+        
+        regionCombo.set_active_id(settings.get_string('region'));
+        regionCombo.connect('changed', () => {
+            settings.set_string('region', regionCombo.get_active_id());
         });
-        regionRow.add_suffix(regionDropdown);
-        displayGroup.add(regionRow);
+
+        regionRow.add_suffix(regionCombo);
+        group.add(regionRow);
 
         // Unit selection
-        const unitRow = new Adw.ActionRow({
-            title: 'Unit',
-            subtitle: 'Select your preferred glucose unit'
-        });
-        const unitDropdown = new Gtk.DropDown({
-            model: new Gtk.StringList({ strings: ['mg/dL', 'mmol/L'] }),
+        const unitRow = new Adw.ActionRow({ title: 'Glucose Unit' });
+        const unitCombo = new Gtk.ComboBoxText({
             valign: Gtk.Align.CENTER,
-            selected: settings.get_string('unit') === 'mg/dL' ? 0 : 1
         });
-        unitDropdown.connect('notify::selected', (dropdown) => {
-            settings.set_string('unit', dropdown.selected === 0 ? 'mg/dL' : 'mmol/L');
-        });
-        unitRow.add_suffix(unitDropdown);
-        displayGroup.add(unitRow);
 
-        // Thresholds group
-        const thresholdsGroup = new Adw.PreferencesGroup({
-            title: 'Glucose Thresholds',
-            description: 'Set glucose level thresholds for color indicators'
+        unitCombo.append('mg/dL', 'mg/dL');
+        unitCombo.append('mmol/L', 'mmol/L');
+        
+        unitCombo.set_active_id(settings.get_string('unit'));
+        unitCombo.connect('changed', () => {
+            settings.set_string('unit', unitCombo.get_active_id());
         });
-        page.add(thresholdsGroup);
 
-        // Low threshold
-        const lowThresholdRow = new Adw.ActionRow({
-            title: 'Low Glucose Threshold',
-            subtitle: 'Values below this will be shown in red (mg/dL)'
-        });
-        const lowThresholdSpinButton = new Gtk.SpinButton({
-            adjustment: new Gtk.Adjustment({
-                lower: 40,
-                upper: 100,
-                step_increment: 1,
-                value: settings.get_int('low-threshold')
-            }),
-            valign: Gtk.Align.CENTER
-        });
-        lowThresholdSpinButton.connect('value-changed', (button) => {
-            settings.set_int('low-threshold', button.get_value());
-        });
-        lowThresholdRow.add_suffix(lowThresholdSpinButton);
-        thresholdsGroup.add(lowThresholdRow);
-
-        // High threshold
-        const highThresholdRow = new Adw.ActionRow({
-            title: 'High Glucose Threshold',
-            subtitle: 'Values above this will be shown in yellow (mg/dL)'
-        });
-        const highThresholdSpinButton = new Gtk.SpinButton({
-            adjustment: new Gtk.Adjustment({
-                lower: 120,
-                upper: 300,
-                step_increment: 1,
-                value: settings.get_int('high-threshold')
-            }),
-            valign: Gtk.Align.CENTER
-        });
-        highThresholdSpinButton.connect('value-changed', (button) => {
-            settings.set_int('high-threshold', button.get_value());
-        });
-        highThresholdRow.add_suffix(highThresholdSpinButton);
-        thresholdsGroup.add(highThresholdRow);
+        unitRow.add_suffix(unitCombo);
+        group.add(unitRow);
 
         // Update interval
-        const updateIntervalRow = new Adw.ActionRow({
-            title: 'Update Interval',
-            subtitle: 'How often to update the glucose value (in seconds)'
+        this._addSpinButton(group, settings, 'update-interval',
+            'Update Interval (seconds)', 60, 600, 30);
+
+        page.add(group);
+    }
+
+    _addThresholdGroup(page, settings) {
+        const group = new Adw.PreferencesGroup({
+            title: 'Glucose Thresholds',
+            description: 'Set glucose threshold values (mg/dL)',
         });
-        const updateIntervalSpinButton = new Gtk.SpinButton({
+
+        this._addSpinButton(group, settings, 'urgent-high-threshold', 
+            'Urgent High Threshold', 180, 400, 1);
+        this._addSpinButton(group, settings, 'high-threshold',
+            'High Threshold', 140, 300, 1);
+        this._addSpinButton(group, settings, 'low-threshold',
+            'Low Threshold', 60, 120, 1);
+        this._addSpinButton(group, settings, 'urgent-low-threshold',
+            'Urgent Low Threshold', 40, 80, 1);
+
+        page.add(group);
+    }
+
+    _addColorGroup(page, settings) {
+        const group = new Adw.PreferencesGroup({
+            title: 'Threshold Colors',
+            description: 'Customize colors for different glucose ranges',
+        });
+
+        this._addColorButton(group, settings, 'urgent-high-color', 'Urgent High Color');
+        this._addColorButton(group, settings, 'high-color', 'High Color');
+        this._addColorButton(group, settings, 'normal-color', 'Normal Color');
+        this._addColorButton(group, settings, 'low-color', 'Low Color');
+        this._addColorButton(group, settings, 'urgent-low-color', 'Urgent Low Color');
+
+        page.add(group);
+    }
+
+    _addDisplayOptionsGroup(page, settings) {
+        const group = new Adw.PreferencesGroup({
+            title: 'Display Options',
+            description: 'Configure what information to show in the panel',
+        });
+
+        this._addSwitch(group, settings, 'show-delta', 'Show Delta');
+        this._addSwitch(group, settings, 'show-trend-arrows', 'Show Trend Arrows');
+        this._addSwitch(group, settings, 'show-elapsed-time', 'Show Elapsed Time');
+        this._addSwitch(group, settings, 'show-icon', 'Show Icon');
+
+        // Icon position
+        const iconPosRow = new Adw.ActionRow({ title: 'Icon Position' });
+        const iconPosCombo = new Gtk.ComboBoxText({
+            valign: Gtk.Align.CENTER,
+        });
+
+        iconPosCombo.append('left', 'Left');
+        iconPosCombo.append('right', 'Right');
+        
+        iconPosCombo.set_active_id(settings.get_string('icon-position'));
+        iconPosCombo.connect('changed', () => {
+            settings.set_string('icon-position', iconPosCombo.get_active_id());
+        });
+
+        iconPosRow.add_suffix(iconPosCombo);
+        group.add(iconPosRow);
+
+        page.add(group);
+    }
+
+    _addSpinButton(group, settings, key, title, min, max, increment) {
+        const row = new Adw.ActionRow({ title });
+        const spinButton = new Gtk.SpinButton({
             adjustment: new Gtk.Adjustment({
-                lower: 180,  // minimum 3 minutes
-                upper: 900,  // maximum 15 minutes
-                step_increment: 60,
-                value: settings.get_int('update-interval')
+                lower: min,
+                upper: max,
+                step_increment: increment,
             }),
-            valign: Gtk.Align.CENTER
+            valign: Gtk.Align.CENTER,
         });
-        updateIntervalSpinButton.connect('value-changed', (button) => {
-            settings.set_int('update-interval', button.get_value());
+
+        settings.bind(key, spinButton, 'value', Gio.SettingsBindFlags.DEFAULT);
+        row.add_suffix(spinButton);
+        group.add(row);
+
+        spinButton.connect('value-changed', () => {
+            const value = spinButton.get_value();
+            const urgentHigh = settings.get_int('urgent-high-threshold');
+            const high = settings.get_int('high-threshold');
+            const low = settings.get_int('low-threshold');
+            const urgentLow = settings.get_int('urgent-low-threshold');
+
+            if (key === 'urgent-high-threshold' && value <= high) {
+                spinButton.set_value(high + 1);
+            } else if (key === 'high-threshold' && (value >= urgentHigh || value <= low)) {
+                spinButton.set_value(Math.min(urgentHigh - 1, Math.max(low + 1, value)));
+            } else if (key === 'low-threshold' && (value >= high || value <= urgentLow)) {
+                spinButton.set_value(Math.min(high - 1, Math.max(urgentLow + 1, value)));
+            } else if (key === 'urgent-low-threshold' && value >= low) {
+                spinButton.set_value(low - 1);
+            }
         });
-        updateIntervalRow.add_suffix(updateIntervalSpinButton);
-        displayGroup.add(updateIntervalRow);
+    }
+
+    _addColorButton(group, settings, key, title) {
+        const row = new Adw.ActionRow({ title });
+        const button = new Gtk.ColorButton({
+            valign: Gtk.Align.CENTER,
+        });
+
+        const rgba = new Gdk.RGBA();
+        rgba.parse(settings.get_string(key));
+        button.set_rgba(rgba);
+
+        button.connect('color-set', () => {
+            const color = button.get_rgba().to_string();
+            settings.set_string(key, color);
+        });
+
+        row.add_suffix(button);
+        group.add(row);
+    }
+
+    _addSwitch(group, settings, key, title) {
+        const row = new Adw.ActionRow({ title });
+        const toggle = new Gtk.Switch({
+            active: settings.get_boolean(key),
+            valign: Gtk.Align.CENTER,
+        });
+
+        settings.bind(key, toggle, 'active', Gio.SettingsBindFlags.DEFAULT);
+        row.add_suffix(toggle);
+        group.add(row);
     }
 }
