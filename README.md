@@ -1,9 +1,9 @@
 ![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.dexcom)
 > ⚠️ **WARNING:** This Dexcom Gnome Shell extension project is currently in development and is not yet operational.
 
-![Dexcom Gnome Shell - 1](img/Dexcom_1.png)
+![Dexcom Gnome Shell - 1](img/Dexcom_0.jpg)
 
-![Dexcom Gnome Shell - 2](img/Dexcom_2.png)
+![Dexcom Gnome Shell - 2](img/Dexcom_1.jpg)
 
 ![Dexcom Gnome Shell - 3](img/Dexcom_3.png)
 

@@ -125,6 +125,15 @@ class DexcomIndicator extends PanelMenu.Button {
             this._updateUnit();
             this._updateReading();
         });
+        // Add icon position change listener
+        this._settings.connect('changed::icon-position', () => {
+            this._updateIconVisibility();
+        });
+
+        // Add show-icon change listener if not already present
+        this._settings.connect('changed::show-icon', () => {
+            this._updateIconVisibility();
+        });
     }
     _updateCredentials() {
         this._dexcomClient = new DexcomClient(
@@ -276,25 +285,89 @@ class DexcomIndicator extends PanelMenu.Button {
     }
 
     _updateIconVisibility() {
-        // Clear existing children
+        // First, remove all existing children
         this.box.remove_all_children();
-
+    
+        // Get settings
         const showIcon = this._settings.get_boolean('show-icon');
         const iconPosition = this._settings.get_string('icon-position');
-
-        // Add elements in the correct order
-        if (showIcon && iconPosition === 'left') {
-            this.box.add_child(this.icon);
+    
+        // Debug log
+        console.log('Icon Position:', iconPosition, 'Show Icon:', showIcon);
+    
+        // Add elements in the correct order based on position
+        if (showIcon && iconPosition.toLowerCase() === 'left') {
+            this.icon && this.box.add_child(this.icon);
         }
-
-        this.box.add_child(this.buttonText);
-
-        if (showIcon && iconPosition === 'right') {
-            this.box.add_child(this.icon);
+    
+        // Always add the value container
+        if (this._currentReading) {
+            const { styleClass, style } = this._getBackgroundClass(this._currentReading.value);
+            
+            const valueContainer = new St.Bin({
+                style_class: styleClass,
+                style: style,
+                x_align: Clutter.ActorAlign.CENTER,
+                y_align: Clutter.ActorAlign.CENTER
+            });
+    
+            const valueLabel = new St.Label({
+                text: `${this._currentReading.value}`,
+                y_align: Clutter.ActorAlign.CENTER
+            });
+            
+            valueContainer.set_child(valueLabel);
+            this.box.add_child(valueContainer);
+    
+            // Add other elements (trend arrows, delta, elapsed time)
+            this._addAdditionalElements(this._currentReading, style);
+        } else {
+            // If no reading, just show "No Data"
+            const label = new St.Label({
+                text: 'No Data',
+                style_class: 'dexcom-value'
+            });
+            this.box.add_child(label);
+        }
+    
+        // Add icon at the end if position is right
+        if (showIcon && iconPosition.toLowerCase() === 'right') {
+            this.icon && this.box.add_child(this.icon);
         }
     }
 
-    // Update the display with glucose reading
+    // Helper function to add additional elements
+_addAdditionalElements(reading, style) {
+    if (this._settings.get_boolean('show-trend-arrows')) {
+        const trendLabel = new St.Label({
+            text: this._getTrendArrow(reading.trend),
+            style_class: 'dexcom-trend',
+            style: style
+        });
+        this.box.add_child(trendLabel);
+    }
+
+    if (this._settings.get_boolean('show-delta')) {
+        const deltaLabel = new St.Label({
+            text: `${reading.delta > 0 ? '+' : ''}${reading.delta}`,
+            style_class: 'dexcom-delta',
+            style: style
+        });
+        this.box.add_child(deltaLabel);
+    }
+
+    if (this._settings.get_boolean('show-elapsed-time')) {
+        const elapsed = Math.floor((Date.now() - reading.timestamp) / 60000);
+        const timeLabel = new St.Label({
+            text: `${elapsed}m`,
+            style_class: 'dexcom-time',
+            style: style
+        });
+        this.box.add_child(timeLabel);
+    }
+}
+
+    // Update _updateDisplay function
     _updateDisplay(reading) {
         // Clear the box and set base style
         this.box.remove_all_children();
@@ -318,9 +391,13 @@ class DexcomIndicator extends PanelMenu.Button {
         // Store current reading for future reference
         this._currentReading = reading;
 
+        // Get styling based on glucose value
+        const { styleClass, style } = this._getBackgroundClass(reading.value);
+
         // Create container for glucose value
         const valueContainer = new St.Bin({
-            style_class: `dexcom-value-container ${this._getBackgroundClass(reading.value)}`,
+            style_class: styleClass,
+            style: style,
             x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER
         });
@@ -328,7 +405,6 @@ class DexcomIndicator extends PanelMenu.Button {
         // Add glucose value
         const valueLabel = new St.Label({
             text: `${reading.value}`,
-            style_class: 'dexcom-value',
             y_align: Clutter.ActorAlign.CENTER
         });
         
@@ -339,7 +415,8 @@ class DexcomIndicator extends PanelMenu.Button {
         if (this._settings.get_boolean('show-trend-arrows')) {
             const trendLabel = new St.Label({
                 text: this._getTrendArrow(reading.trend),
-                style_class: 'dexcom-trend'
+                style_class: 'dexcom-trend',
+                style: style // Apply same color as value
             });
             this.box.add_child(trendLabel);
         }
@@ -348,7 +425,8 @@ class DexcomIndicator extends PanelMenu.Button {
         if (this._settings.get_boolean('show-delta')) {
             const deltaLabel = new St.Label({
                 text: `${reading.delta > 0 ? '+' : ''}${reading.delta}`,
-                style_class: 'dexcom-delta'
+                style_class: 'dexcom-delta',
+                style: style // Apply same color as value
             });
             this.box.add_child(deltaLabel);
         }
@@ -358,12 +436,13 @@ class DexcomIndicator extends PanelMenu.Button {
             const elapsed = Math.floor((Date.now() - reading.timestamp) / 60000);
             const timeLabel = new St.Label({
                 text: `${elapsed}m`,
-                style_class: 'dexcom-time'
+                style_class: 'dexcom-time',
+                style: style // Apply the same color style as other elements
             });
             this.box.add_child(timeLabel);
         }
     }
-
+    
     _buildMenu() {
         // Glucose info section
         this.glucoseInfo = new PopupMenu.PopupMenuItem('Loading...', {
@@ -417,16 +496,54 @@ class DexcomIndicator extends PanelMenu.Button {
         this.menu.addMenuItem(settingsButton);
     }
     _getBackgroundClass(value) {
+        // Get threshold values from settings
         const urgentHigh = this._settings.get_int('urgent-high-threshold');
         const high = this._settings.get_int('high-threshold');
         const low = this._settings.get_int('low-threshold');
         const urgentLow = this._settings.get_int('urgent-low-threshold');
-        
-        if (value >= urgentHigh) return 'bg-urgent-high';
-        if (value >= high) return 'bg-high';
-        if (value > low) return 'bg-normal';
-        if (value > urgentLow) return 'bg-low';
-        return 'bg-urgent-low';
+    
+        // Get colors from settings
+        const urgentHighColor = this._settings.get_string('urgent-high-color');
+        const highColor = this._settings.get_string('high-color');
+        const normalColor = this._settings.get_string('normal-color');
+        const lowColor = this._settings.get_string('low-color');
+        const urgentLowColor = this._settings.get_string('urgent-low-color');
+    
+        // Helper function to convert hex to rgba
+        const hexToRgba = (hex, alpha) => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        };
+    
+        let styleClass = 'dexcom-value-container';
+        let color, bgColor, borderColor;
+    
+        if (value >= urgentHigh) {
+            color = urgentHighColor;
+            bgColor = hexToRgba(urgentHighColor, 0.2);
+            borderColor = hexToRgba(urgentHighColor, 0.4);
+        } else if (value >= high) {
+            color = highColor;
+            bgColor = hexToRgba(highColor, 0.2);
+            borderColor = hexToRgba(highColor, 0.4);
+        } else if (value > low) {
+            color = normalColor;
+            bgColor = hexToRgba(normalColor, 0.2);
+            borderColor = hexToRgba(normalColor, 0.4);
+        } else if (value > urgentLow) {
+            color = lowColor;
+            bgColor = hexToRgba(lowColor, 0.2);
+            borderColor = hexToRgba(lowColor, 0.4);
+        } else {
+            color = urgentLowColor;
+            bgColor = hexToRgba(urgentLowColor, 0.2);
+            borderColor = hexToRgba(urgentLowColor, 0.4);
+        }
+    
+        const style = `background-color: ${bgColor}; border-color: ${borderColor}; color: ${color};`;
+        return { styleClass, style };
     }
     
     // Update _updateMenuInfo function in extension.js

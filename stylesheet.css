@@ -12,40 +12,6 @@
     margin-right: 4px;
 }
 
-.dexcom-value-container {
-    padding: 1px 6px;
-    border-radius: 3px;
-    margin: 2px 0;
-    height: 1.4em;
-    display: flex;
-    align-items: center;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-}
-
-.dexcom-value {
-    font-size: 14px;
-    font-weight: bold;
-    text-align: center;
-    margin: 0 2px;
-}
-
-.dexcom-trend {
-    font-size: 14px;
-    margin-left: 4px;
-    font-weight: bold;
-}
-
-.dexcom-delta {
-    font-size: 12px;
-    margin-left: 4px;
-}
-
-.dexcom-time {
-    font-size: 11px;
-    margin-left: 4px;
-    margin-right: 2px;
-}
-
 /* Background colors with improved visibility */
 .bg-urgent-high {
     background-color: rgba(255, 0, 0, 0.2);
@@ -93,4 +59,43 @@
 
 .dexcom-refresh-button:active {
     background-color: rgba(64, 132, 214, 0.25);
+}
+/* .dexcom-value-container {
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin: 2px 0;
+    height: 1.4em;
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+} */
+.dexcom-value-container {
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin: 2px 0;
+    height: 1.4em;
+    display: flex;
+    align-items: center;
+    border-width: 1px;
+    border-style: solid;
+}
+.dexcom-value {
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 2px;
+}
+.dexcom-trend {
+    font-size: 14px;
+    margin-left: 4px;
+    font-weight: bold;
+}
+.dexcom-delta {
+    font-size: 12px;
+    margin-left: 4px;
+}
+.dexcom-time {
+    font-size: 11px;
+    margin-left: 4px;
+    margin-right: 2px;
 }
