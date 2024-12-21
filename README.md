@@ -1,17 +1,14 @@
 ![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.dexcom)
-> ⚠️ **WARNING:** This Dexcom Gnome Shell extension project is currently in development and is not yet operational.
 
 ![Dexcom Gnome Shell - 1](img/Dexcom_0.jpg)
 
 ![Dexcom Gnome Shell - 2](img/Dexcom_1.jpg)
 
-![Dexcom Gnome Shell - 3](img/Dexcom_3.png)
+![Dexcom - Configuration Menu](img/Dexcom_config_menu_1.png)
 
-![Dexcom Gnome Shell - 4](img/Dexcom_4.png)
+![Dexcom - Configuration Menu](img/Dexcom_config_menu_2.png)
 
-![Dexcom Gnome Shell - 5](img/Dexcom_5.png)
-
-![Dexcom - Configuration Menu](img/Dexcom_config_menu.png)
+![Dexcom - Configuration Menu](img/Dexcom_config_menu_3.png)
 
 # Dexcom Blood Glucose Monitor GNOME Extension
 
