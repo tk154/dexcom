@@ -431,47 +431,48 @@ class DexcomIndicator extends PanelMenu.Button {
     
     // Update _updateMenuInfo function in extension.js
     _updateMenuInfo(reading) {
-        if (!reading) {
-            this.glucoseInfo.label.text = 'No data available';
-            return;
-        }
-    
-        const unit = this._settings.get_string('unit');
-        const time = new Date(reading.timestamp).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-        });
-    
-        // Updated trend mapping with better descriptions
-        const trendMap = {
-            'NONE': 'Stable',
-            'DOUBLE_UP': 'Rising Rapidly',
-            'SINGLE_UP': 'Rising',
-            'FORTY_FIVE_UP': 'Rising Slowly',
-            'FLAT': 'Stable',
-            'FORTY_FIVE_DOWN': 'Falling Slowly',
-            'SINGLE_DOWN': 'Falling',
-            'DOUBLE_DOWN': 'Falling Rapidly',
-            'NOT_COMPUTABLE': 'Unable to Determine',
-            'RATE_OUT_OF_RANGE': 'Out of Range'
-        };
-    
-        const trendDescription = trendMap[reading.trend] || 'Unknown';
-        console.log('Debug - Trend Value:', reading.trend, 'Mapped Description:', trendDescription);
-    
-        const info = [
-            `Last Reading: ${reading.value} ${unit}`,
-            `Time: ${time}`,
-            `Trend: ${trendDescription}`,
-            `Delta: ${reading.delta > 0 ? '+' : ''}${reading.delta} ${unit}`
-        ].join('\n');
-    
-        this.glucoseInfo.label.text = info;
+    if (!reading) {
+        this.glucoseInfo.label.text = 'No data available';
+        return;
     }
 
-   
+    const unit = this._settings.get_string('unit');
+    const time = new Date(reading.timestamp).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    });
+
+    // Updated trend mapping
+    const trendMap = {
+        'NONE': 'Stable',
+        'DOUBLE_UP': 'Rising Rapidly',
+        'SINGLE_UP': 'Rising',
+        'FORTY_FIVE_UP': 'Rising Slowly',
+        'FLAT': 'Stable',
+        'FORTY_FIVE_DOWN': 'Falling Slowly',
+        'SINGLE_DOWN': 'Falling',
+        'DOUBLE_DOWN': 'Falling Rapidly',
+        'NOT_COMPUTABLE': 'Unable to Determine',
+        'RATE_OUT_OF_RANGE': 'Out of Range'
+    };
+
+    const trendStr = String(reading.trend).toUpperCase();
+    const trendDescription = trendMap[trendStr] || 'Unknown';
+
+    const info = [
+        `Last Reading: ${reading.value} ${unit}`,
+        `Time: ${time}`,
+        `Trend: ${trendDescription}`,
+        `Delta: ${reading.delta > 0 ? '+' : ''}${reading.delta} ${unit}`
+    ].join('\n');
+
+    this.glucoseInfo.label.text = info;
+    }
+    
     _getTrendArrow(trend) {
+        // Make sure trend is a string and uppercase
+        const trendStr = String(trend).toUpperCase();
         const arrows = {
             'NONE': '→',
             'DOUBLE_UP': '⇈',
@@ -484,7 +485,7 @@ class DexcomIndicator extends PanelMenu.Button {
             'NOT_COMPUTABLE': '-',
             'RATE_OUT_OF_RANGE': '?'
         };
-        return arrows[trend] || '-';
+        return arrows[trendStr] || '-';
     }
 
     destroy() {

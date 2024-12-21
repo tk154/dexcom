@@ -157,32 +157,13 @@ export class DexcomClient {
     }
 
     _formatReading(reading) {
-        // Normalize trend value and handle API variations
-        let trend = 'NONE';
-        if (reading.Trend) {
-            // Handle possible API responses for trend
-            const trendValue = String(reading.Trend).toUpperCase();
-            const trendMappings = {
-                'NONE': 'NONE',
-                'DOUBLEUP': 'DOUBLE_UP',
-                'SINGLEUP': 'SINGLE_UP',
-                'FORTYFIVEUP': 'FORTY_FIVE_UP',
-                'FLAT': 'FLAT',
-                'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
-                'SINGLEDOWN': 'SINGLE_DOWN',
-                'DOUBLEDOWN': 'DOUBLE_DOWN',
-                'NOT_COMPUTABLE': 'NOT_COMPUTABLE',
-                'RATE_OUT_OF_RANGE': 'RATE_OUT_OF_RANGE',
-                // Add variations that might come from the API
-                'DOUBLE UP': 'DOUBLE_UP',
-                'SINGLE UP': 'SINGLE_UP',
-                'FORTY FIVE UP': 'FORTY_FIVE_UP',
-                'FORTY FIVE DOWN': 'FORTY_FIVE_DOWN',
-                'SINGLE DOWN': 'SINGLE_DOWN',
-                'DOUBLE DOWN': 'DOUBLE_DOWN'
-            };
-            
-            trend = trendMappings[trendValue] || trendValue;
+        // Get the trend value and clean it up
+        let trend = reading.Trend;
+        if (typeof trend === 'string') {
+            // Remove any spaces and convert to uppercase
+            trend = trend.toUpperCase().replace(/\s+/g, '_');
+        } else {
+            trend = 'NONE';
         }
     
         // Calculate value based on unit
@@ -200,6 +181,8 @@ export class DexcomClient {
                 
             delta = value - prevValue;
         }
+    
+        // Store current reading for next delta calculation
         this._previousReading = {...reading};
     
         return {
