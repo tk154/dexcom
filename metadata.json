@@ -1,6 +1,6 @@
 {
     "uuid": "dexcom@faymaz.github.com",
-    "name": "Dexcom CGM Monitor",
+    "name": "Dexcom Blood Glucose Monitor",
     "description": "A GNOME Shell extension that seamlessly integrates with Dexcom Share to display real-time blood glucose levels in the top panel. Features customizable urgent high/low thresholds, color schemes, and comprehensive glucose monitoring options.\n\nThis extension is not affiliated, funded, or in any way associated with Dexcom.",
     "version": 4,
     "shell-version": [ "45", "46", "47" ],
@@ -12,6 +12,5 @@
     },
     "icon": "icons/dexcom-icon.svg",
     "categories": ["system-monitor", "status-indicators"],
-    "session-modes": ["user"],
     "build-system": "meson"
 }

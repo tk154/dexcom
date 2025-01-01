@@ -615,14 +615,19 @@ export default class DexcomExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
         this._indicator = new DexcomIndicator(this._settings);
-        // Set path before initializing icon
         this._indicator.setPath(this.path);
         this._indicator.extension = this;
         Main.panel.addToStatusArea('dexcom-indicator', this._indicator);
     }
 
     disable() {
-        this._indicator.destroy();
-        this._indicator = null;
+        if (this._indicator) {
+            this._indicator.destroy();
+            this._indicator = null;
+        }
+        // Clear settings reference
+        if (this._settings) {
+            this._settings = null;
+        }
     }
 }
