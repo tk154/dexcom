@@ -195,52 +195,71 @@ export class DexcomClient {
     }
 
     _formatReading(reading) {
-        // Helper function to normalize trend values
-        const normalizeTrend = (trend) => {
-            const trendMap = {
-                'NONE': 'NONE',
-                'DOUBLEUP': 'DOUBLE_UP',
-                'SINGLEUP': 'SINGLE_UP',
-                'FORTYFIVEUP': 'FORTY_FIVE_UP',
-                'FLAT': 'FLAT',
-                'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
-                'SINGLEDOWN': 'SINGLE_DOWN',
-                'DOUBLEDOWN': 'DOUBLE_DOWN',
-                'NOTCOMPUTABLE': 'NOT_COMPUTABLE',
-                'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
-            };
-            
-            const normalizedTrend = String(trend).toUpperCase()
-                .replace(/\s+/g, '')
-                .replace(/-/g, '');
-                
-            return trendMap[normalizedTrend] || trend;
-        };
-
         // Calculate value based on unit
         let value = reading.Value;
         if (this._unit === 'mmol/L') {
             value = (reading.Value / 18.0).toFixed(1);
         }
-
-        // Calculate delta
+    
+        // Calculate delta more accurately
         let delta = 0;
-        if (this._previousReading) {
+        if (this._previousReading && this._previousReading.Value !== reading.Value) {
             const prevValue = this._unit === 'mmol/L' ? 
                 (this._previousReading.Value / 18.0) : 
                 this._previousReading.Value;
+                
             delta = value - prevValue;
+        } else {
+            // If trend is downward, estimate a negative delta
+            if (reading.Trend === 'SingleDown') {
+                delta = -2.0;
+            } else if (reading.Trend === 'DoubleDown') {
+                delta = -4.0;
+            } else if (reading.Trend === 'FortyFiveDown') {
+                delta = -1.0;
+            } else if (reading.Trend === 'SingleUp') {
+                delta = 2.0;
+            } else if (reading.Trend === 'DoubleUp') {
+                delta = 4.0;
+            } else if (reading.Trend === 'FortyFiveUp') {
+                delta = 1.0;
+            }
         }
-
+    
         // Store current reading for next delta calculation
         this._previousReading = {...reading};
-
+    
+        // Normalize trend value
+        const trend = this._normalizeTrend(reading.Trend);
+    
         return {
             value: value,
             unit: this._unit,
-            trend: normalizeTrend(reading.Trend),
+            trend: trend,
             timestamp: new Date(parseInt(reading.WT.match(/\d+/)[0])),
             delta: delta.toFixed(1)
         };
+    }
+
+    // Helper function to normalize trend values
+    _normalizeTrend(trend) {
+        const trendMap = {
+            'NONE': 'NONE',
+            'DOUBLEUP': 'DOUBLE_UP',
+            'SINGLEUP': 'SINGLE_UP',
+            'FORTYFIVEUP': 'FORTY_FIVE_UP',
+            'FLAT': 'FLAT',
+            'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
+            'SINGLEDOWN': 'SINGLE_DOWN',
+            'DOUBLEDOWN': 'DOUBLE_DOWN',
+            'NOTCOMPUTABLE': 'NOT_COMPUTABLE',
+            'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
+        };
+
+        const normalizedTrend = String(trend).toUpperCase()
+            .replace(/\s+/g, '')
+            .replace(/-/g, '');
+
+        return trendMap[normalizedTrend] || trend;
     }
 }
