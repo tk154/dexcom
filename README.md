@@ -1,8 +1,12 @@
 ![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.dexcom)
 
-![Dexcom Gnome Shell - 1](img/Dexcom_0.jpg)
+![Dexcom Gnome Shell - 1](img/Dexcom_0.png)
 
-![Dexcom Gnome Shell - 2](img/Dexcom_1.jpg)
+![Dexcom Gnome Shell - 2](img/Dexcom_1.png)
+
+![Dexcom Gnome Shell - 3](img/Dexcom_2.jpg)
+
+![Dexcom Gnome Shell - 4](img/Dexcom_3.jpg)
 
 ![Dexcom - Configuration Menu](img/Dexcom_config_menu_1.png)
 
