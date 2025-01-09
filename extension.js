@@ -135,14 +135,27 @@ class DexcomIndicator extends PanelMenu.Button {
             this._updateIconVisibility();
         });
     }
+
     _updateCredentials() {
+        const username = this._settings.get_string('username');
+        const password = this._settings.get_string('password');
+        const region = this._settings.get_string('region');
+        const unit = this._settings.get_string('unit');
+    
+        if (!username || !password) {
+            console.warn('Username or password not set');
+            this._updateDisplayError('Auth Error', 'Please enter your Dexcom Share credentials');
+            return;
+        }
+    
         this._dexcomClient = new DexcomClient(
-            this._settings.get_string('username'),
-            this._settings.get_string('password'),
-            this._settings.get_string('region'),
-            this._settings.get_string('unit')
+            username,
+            password,
+            region,
+            unit
         );
     }
+
     // Add menu toggle items with immediate update
     _addToggleMenuItem(label, settingKey) {
         const toggleItem = new PopupMenu.PopupSwitchMenuItem(
@@ -208,43 +221,57 @@ class DexcomIndicator extends PanelMenu.Button {
     }
 
     // Update the reading from Dexcom
-    async _updateReading() {
-        try {
-            const reading = await this._dexcomClient.getLatestGlucose();
-            if (!reading) {
-                this.buttonText.text = 'No Data';
-                this.buttonText.style_class = 'dexcom-label';
-                this.glucoseInfo.label.text = 'No glucose data available';
-                return;
-            }
+  async _updateReading() {
+    if (!this._dexcomClient) {
+        this._updateDisplayError('Setup Required', 'Please configure your Dexcom Share credentials');
+        return;
+    }
+
+    try {
+        const reading = await this._dexcomClient.getLatestGlucose();
+        
+        if (!reading) {
+            this._updateDisplayError('No Data', 'No glucose data available');
+            return;
+        }
+
+        this._updateDisplay(reading);
+        this._updateMenuInfo(reading);
+    } catch (error) {
+        console.error('Error fetching Dexcom reading:', error);
+
+        let errorMessage = 'Error';
+        let detailedMessage = error.message;
+
+        if (error.message.includes('Authentication failed') || 
+            error.message.includes('Invalid credentials')) {
+            errorMessage = 'Auth Error';
+            detailedMessage = 'Please check your Dexcom Share credentials';
             
-            // Update both panel display and menu info
-            this._updateDisplay(reading);
-            this._updateMenuInfo(reading);
-            
-        } catch (error) {
-            console.error('Error fetching Dexcom reading:', error);
-            
-            // Set appropriate error messages
-            let errorMessage = 'No Data';
-            let detailedMessage = 'No glucose data available';
-            
-            if (error.message?.includes('unauthorized') || error.message?.includes('credentials')) {
-                errorMessage = 'Auth Error';
-                detailedMessage = 'Please check your Dexcom Share credentials';
-            } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
-                errorMessage = 'Network Error';
-                detailedMessage = 'Please check your internet connection';
-            }
-            
-            // Update display with error messages
-            this.buttonText.text = errorMessage;
-            this.buttonText.style_class = 'dexcom-label dexcom-error';
+            // Force credentials update
+            this._dexcomClient = null;
+            await this._updateCredentials();
+        } else if (error.message.includes('Session expired')) {
+            // Just retry on session expiry
+            await this._updateReading();
+            return;
+        } else if (error.message.includes('network') || error.message.includes('timeout')) {
+            errorMessage = 'Network Error';
+            detailedMessage = 'Please check your internet connection';
+        }
+
+        this._updateDisplayError(errorMessage, detailedMessage);
+    }
+}
+
+    // Add helper function for error display
+    _updateDisplayError(errorMessage, detailedMessage) {
+        this.buttonText.text = errorMessage;
+        this.buttonText.style_class = 'dexcom-label dexcom-error';
+        if (this.glucoseInfo) {
             this.glucoseInfo.label.text = detailedMessage;
         }
     }
-
-
 
     _getColorForValue(value) {
         const urgentHigh = this._settings.get_int('urgent-high-threshold');
@@ -293,7 +320,7 @@ class DexcomIndicator extends PanelMenu.Button {
         const iconPosition = this._settings.get_string('icon-position');
     
         // Debug log
-        console.log('Icon Position:', iconPosition, 'Show Icon:', showIcon);
+        //console.log('Icon Position:', iconPosition, 'Show Icon:', showIcon);
     
         // Add elements in the correct order based on position
         if (showIcon && iconPosition.toLowerCase() === 'left') {
@@ -575,7 +602,7 @@ _addAdditionalElements(reading, style) {
         };
     
         const trendDescription = trendMap[reading.trend] || 'Unknown';
-        console.log('Debug - Trend Value:', reading.trend, 'Mapped Description:', trendDescription);
+        //console.log('Debug - Trend Value:', reading.trend, 'Mapped Description:', trendDescription);
     
         const info = [
             `Last Reading: ${reading.value} ${unit}`,

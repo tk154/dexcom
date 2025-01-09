@@ -1,4 +1,3 @@
-// dexcomClient.js
 'use strict';
 
 import GLib from 'gi://GLib';
@@ -10,17 +9,34 @@ export class DexcomClient {
         this._username = username;
         this._password = password;
         this._region = region.toLowerCase();
+        
+        // Update base URLs and handling
         this._baseUrls = {
-            us: 'https://share2.dexcom.com',
-            ous: 'https://shareous1.dexcom.com',
-            jp: 'https://shareous1.dexcom.com'
+            'us': 'https://share2.dexcom.com',
+            'non-us': 'https://shareous1.dexcom.com',
+            'non_us': 'https://shareous1.dexcom.com',
+            'ous': 'https://shareous1.dexcom.com'
         };
-        this._baseUrl = this._baseUrls[this._region] || this._baseUrls.ous;
+        
+        // Set base URL based on region
+        this._baseUrl = this._baseUrls[this._region] || this._baseUrls['ous'];
+        
         this._applicationId = 'd89443d2-327c-4a6f-89e5-496bbb0317db';
+        this._agent = 'Dexcom Share/3.0.2.11';
         this._sessionId = null;
         this._accountId = null;
         this._unit = unit;
+        
+        // Configure session
         this._session = new Soup.Session();
+        this._session.timeout = 30;
+        
+        // Debug info
+        console.log('DexcomClient initialized:', {
+            region: this._region,
+            baseUrl: this._baseUrl,
+            unit: this._unit
+        });
     }
 
     // Helper function to encode URI components safely
@@ -37,77 +53,86 @@ export class DexcomClient {
             .join('&');
     }
 
+    // Update _makeRequest method
     async _makeRequest(url, method = 'GET', data = null, params = null) {
-        // Add query parameters if provided
-        if (params) {
-            url = `${url}?${this._buildQueryString(params)}`;
-        }
-
-        const message = new Soup.Message({
-            method,
-            uri: GLib.Uri.parse(url, GLib.UriFlags.NONE)
-        });
-
-        // Set headers
-        const headers = message.get_request_headers();
-        headers.append('Content-Type', 'application/json');
-        headers.append('Accept', 'application/json');
-        headers.append('User-Agent', 'Dexcom Share/3.0.2.11');
-
-        // Add body data if provided
-        if (data) {
-            const bytes = new GLib.Bytes(JSON.stringify(data));
-            message.set_request_body_from_bytes('application/json', bytes);
-        }
-
         try {
-            const bytes = await this._session.send_and_read_async(message, 
+            if (params) {
+                const queryString = Object.entries(params)
+                    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+                    .join('&');
+                url = `${url}?${queryString}`;
+            }
+
+            const message = new Soup.Message({
+                method,
+                uri: GLib.Uri.parse(url, GLib.UriFlags.NONE)
+            });
+
+            // Set headers
+            const headers = message.get_request_headers();
+            headers.append('Content-Type', 'application/json; charset=utf-8');
+            headers.append('Accept', 'application/json');
+            headers.append('User-Agent', this._agent);
+
+            // Add request body if provided and method is not GET
+            if (data && method !== 'GET') {
+                const jsonStr = JSON.stringify(data);
+                const bytes = new TextEncoder().encode(jsonStr);
+                message.set_request_body_from_bytes('application/json', new GLib.Bytes(bytes));
+                console.log(`Request body: ${jsonStr}`);
+            } else {
+                console.log('GET request - no body required');
+            }
+
+            const response = await this._session.send_and_read_async(message, 
                 GLib.PRIORITY_DEFAULT, null);
             
             const status = message.get_status();
+            const responseText = new TextDecoder().decode(response.get_data());
             
-            // Handle different status codes
-            if (status === 500) {
-                const text = new TextDecoder().decode(bytes.get_data());
-                const error = JSON.parse(text);
-                if (error.Code === 'SessionIdNotFound') {
-                    this._sessionId = null;
-                    throw new Error('SessionIdNotFound');
+            if (status === 200) {
+                try {
+                    return JSON.parse(responseText);
+                } catch {
+                    return responseText.replace(/^"|"$/g, '');
                 }
-                throw new Error(error.Message || 'Server error');
-            }
-            
-            if (status !== Soup.Status.OK) {
-                throw new Error(`Request failed with status ${status}`);
             }
 
-            const text = new TextDecoder().decode(bytes.get_data());
-            
-            try {
-                // Try to parse as JSON first
-                return JSON.parse(text);
-            } catch {
-                // If not JSON, return the raw text with quotes removed
-                return text.replace(/^"|"$/g, '');
-            }
+            // Handle error responses
+            throw new Error(`Request failed with status ${status}: ${responseText}`);
+
         } catch (error) {
-            throw new Error(`Request error: ${error.message}`);
+            console.error('Request failed:', error);
+            throw error;
         }
     }
 
-    async authenticate() {
-        // Step 1: Get account ID
-        const authUrl = `${this._baseUrl}/ShareWebServices/Services/General/AuthenticatePublisherAccount`;
-        const authPayload = {
-            accountName: this._username,
-            password: this._password,
-            applicationId: this._applicationId
-        };
 
+    
+    async authenticate() {
         try {
+            // Validate credentials
+            if (!this._username || !this._password) {
+                throw new Error('Username and password are required');
+            }
+
+            // Step 1: Authentication
+            const authUrl = `${this._baseUrl}/ShareWebServices/Services/General/AuthenticatePublisherAccount`;
+            const authPayload = {
+                accountName: this._username,
+                password: this._password,
+                applicationId: this._applicationId
+            };
+
+            console.log('Attempting authentication...');
             this._accountId = await this._makeRequest(authUrl, 'POST', authPayload);
-            
-            // Step 2: Get session ID
+
+            // Validate accountId
+            if (!this._accountId || typeof this._accountId !== 'string') {
+                throw new Error('Invalid account ID received');
+            }
+
+            // Step 2: Login
             const loginUrl = `${this._baseUrl}/ShareWebServices/Services/General/LoginPublisherAccountById`;
             const loginPayload = {
                 accountId: this._accountId,
@@ -117,38 +142,51 @@ export class DexcomClient {
 
             this._sessionId = await this._makeRequest(loginUrl, 'POST', loginPayload);
 
-            if (this._sessionId === '00000000-0000-0000-0000-000000000000') {
-                throw new Error('Invalid credentials');
+            // Validate sessionId
+            if (!this._sessionId || this._sessionId === '00000000-0000-0000-0000-000000000000') {
+                throw new Error('Invalid session ID received');
             }
 
+            console.log('Authentication successful');
             return this._sessionId;
+
         } catch (error) {
-            throw new Error(`Authentication error: ${error.message}`);
+            console.error('Authentication error:', error);
+            this._sessionId = null;
+            this._accountId = null;
+            throw error;
         }
     }
 
-    async getLatestGlucose() {
-        if (!this._sessionId) {
-            await this.authenticate();
-        }
 
+    async getLatestGlucose() {
         try {
+            if (!this._sessionId) {
+                await this.authenticate();
+            }
+    
             const url = `${this._baseUrl}/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues`;
             const params = {
                 sessionId: this._sessionId,
-                minutes: '10',
-                maxCount: '1'
+                minutes: 1440,
+                maxCount: 1
             };
-
-            const readings = await this._makeRequest(url, 'POST', null, params);
+    
+            console.log('Fetching latest glucose reading...');
+            const readings = await this._makeRequest(url, 'GET', null, params); // Changed to GET method
             
             if (!Array.isArray(readings) || readings.length === 0) {
+                console.log('No readings available');
                 throw new Error('No readings available');
             }
-
-            return this._formatReading(readings[0]);
+    
+            const reading = this._formatReading(readings[0]);
+            console.log('Latest reading:', reading);
+            return reading;
+    
         } catch (error) {
             if (error.message.includes('SessionIdNotFound')) {
+                console.log('Session expired, re-authenticating...');
                 this._sessionId = null;
                 return this.getLatestGlucose();
             }
@@ -157,12 +195,9 @@ export class DexcomClient {
     }
 
     _formatReading(reading) {
-        // Normalize trend value and handle API variations
-        let trend = 'NONE';
-        if (reading.Trend) {
-            // Handle possible API responses for trend
-            const trendValue = String(reading.Trend).toUpperCase();
-            const trendMappings = {
+        // Helper function to normalize trend values
+        const normalizeTrend = (trend) => {
+            const trendMap = {
                 'NONE': 'NONE',
                 'DOUBLEUP': 'DOUBLE_UP',
                 'SINGLEUP': 'SINGLE_UP',
@@ -171,41 +206,39 @@ export class DexcomClient {
                 'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
                 'SINGLEDOWN': 'SINGLE_DOWN',
                 'DOUBLEDOWN': 'DOUBLE_DOWN',
-                'NOT_COMPUTABLE': 'NOT_COMPUTABLE',
-                'RATE_OUT_OF_RANGE': 'RATE_OUT_OF_RANGE',
-                // Add variations that might come from the API
-                'DOUBLE UP': 'DOUBLE_UP',
-                'SINGLE UP': 'SINGLE_UP',
-                'FORTY FIVE UP': 'FORTY_FIVE_UP',
-                'FORTY FIVE DOWN': 'FORTY_FIVE_DOWN',
-                'SINGLE DOWN': 'SINGLE_DOWN',
-                'DOUBLE DOWN': 'DOUBLE_DOWN'
+                'NOTCOMPUTABLE': 'NOT_COMPUTABLE',
+                'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
             };
             
-            trend = trendMappings[trendValue] || trendValue;
-        }
-    
+            const normalizedTrend = String(trend).toUpperCase()
+                .replace(/\s+/g, '')
+                .replace(/-/g, '');
+                
+            return trendMap[normalizedTrend] || trend;
+        };
+
         // Calculate value based on unit
         let value = reading.Value;
         if (this._unit === 'mmol/L') {
             value = (reading.Value / 18.0).toFixed(1);
         }
-    
+
         // Calculate delta
         let delta = 0;
         if (this._previousReading) {
             const prevValue = this._unit === 'mmol/L' ? 
                 (this._previousReading.Value / 18.0) : 
                 this._previousReading.Value;
-                
             delta = value - prevValue;
         }
+
+        // Store current reading for next delta calculation
         this._previousReading = {...reading};
-    
+
         return {
             value: value,
             unit: this._unit,
-            trend: trend,
+            trend: normalizeTrend(reading.Trend),
             timestamp: new Date(parseInt(reading.WT.match(/\d+/)[0])),
             delta: delta.toFixed(1)
         };
