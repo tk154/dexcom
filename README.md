@@ -4,7 +4,7 @@
 
 ![Dexcom Gnome Shell - 2](img/Dexcom_1.png)
 
-![Dexcom Gnome Shell - 3](img/Dexcom_2.jpg)
+![Dexcom Gnome Shell - 3](img/Dexcom_2.png)
 
 ![Dexcom Gnome Shell - 4](img/Dexcom_3.jpg)
 
