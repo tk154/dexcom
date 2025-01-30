@@ -1,4 +1,4 @@
-# 🩺 Dexcom Blood Glucose Monitor GNOME Extension
+# Dexcom Blood Glucose Monitor GNOME Extension
 
 ![Visitor Count](https://visitor-badge.laobi.icu/badge?page_id=faymaz.dexcom)
 
