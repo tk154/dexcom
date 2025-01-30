@@ -27,9 +27,12 @@ A GNOME Shell extension that seamlessly integrates with Dexcom Share to display 
 ## 📸 Screenshots
 
 ![Dexcom Gnome Shell - 1](img/Dexcom_0.png)
+
 ![Dexcom Gnome Shell - 2](img/Dexcom_1.png)
+
 ![Dexcom Gnome Shell - 3](img/Dexcom_2.png)
 
+![Dexcom Gnome Shell - 4](img/Dexcom_3.png)
 
 ## ⚙️ Configuration Screenshots
 
