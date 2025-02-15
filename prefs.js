@@ -105,21 +105,85 @@ export default class DexcomPreferences extends ExtensionPreferences {
     _addThresholdGroup(page, settings) {
         const group = new Adw.PreferencesGroup({
             title: 'Glucose Thresholds',
-            description: 'Set glucose threshold values (mg/dL)',
+            description: `Set glucose threshold values (${settings.get_string('unit')})`,
         });
 
-        this._addSpinButton(group, settings, 'urgent-high-threshold', 
-            'Urgent High Threshold', 180, 400, 1);
+        // Helper function to convert between units
+        const convertValue = (value, toMmol = false) => {
+            if (toMmol) {
+                return Math.round((value / 18.0) * 10) / 10; // mg/dL to mmol/L
+            }
+            return Math.round(value * 18.0); // mmol/L to mg/dL
+        };
+
+        // Get current unit
+        const currentUnit = settings.get_string('unit');
+        const isMmol = currentUnit === 'mmol/L';
+
+        // Set ranges based on unit
+        const ranges = isMmol ? {
+            urgentHigh: { min: 10.0, max: 22.2, increment: 0.1 },
+            high: { min: 7.8, max: 16.7, increment: 0.1 },
+            low: { min: 3.3, max: 6.7, increment: 0.1 },
+            urgentLow: { min: 2.2, max: 4.4, increment: 0.1 }
+        } : {
+            urgentHigh: { min: 180, max: 400, increment: 1 },
+            high: { min: 140, max: 300, increment: 1 },
+            low: { min: 60, max: 120, increment: 1 },
+            urgentLow: { min: 40, max: 80, increment: 1 }
+        };
+
+        // Create spin buttons with appropriate ranges
+        this._addSpinButton(group, settings, 'urgent-high-threshold',
+            'Urgent High Threshold',
+            ranges.urgentHigh.min,
+            ranges.urgentHigh.max,
+            ranges.urgentHigh.increment,
+            isMmol);
+
         this._addSpinButton(group, settings, 'high-threshold',
-            'High Threshold', 140, 300, 1);
+            'High Threshold',
+            ranges.high.min,
+            ranges.high.max,
+            ranges.high.increment,
+            isMmol);
+
         this._addSpinButton(group, settings, 'low-threshold',
-            'Low Threshold', 60, 120, 1);
+            'Low Threshold',
+            ranges.low.min,
+            ranges.low.max,
+            ranges.low.increment,
+            isMmol);
+
         this._addSpinButton(group, settings, 'urgent-low-threshold',
-            'Urgent Low Threshold', 40, 80, 1);
+            'Urgent Low Threshold',
+            ranges.urgentLow.min,
+            ranges.urgentLow.max,
+            ranges.urgentLow.increment,
+            isMmol);
+
+        // Listen for unit changes
+        settings.connect('changed::unit', () => {
+            const newUnit = settings.get_string('unit');
+            const switchingToMmol = newUnit === 'mmol/L';
+
+            // Update description
+            group.description = `Set glucose threshold values (${newUnit})`;
+
+            // Convert all threshold values
+            ['urgent-high-threshold', 'high-threshold', 'low-threshold', 'urgent-low-threshold'].forEach(key => {
+                const currentValue = settings.get_int(key);
+                const convertedValue = convertValue(currentValue, switchingToMmol);
+                settings.set_int(key, convertedValue);
+            });
+
+            // Rebuild the group to update ranges
+            page.remove(group);
+            this._addThresholdGroup(page, settings);
+        });
 
         page.add(group);
     }
-
     _addColorGroup(page, settings) {
         const group = new Adw.PreferencesGroup({
             title: 'Threshold Colors',
@@ -166,39 +230,78 @@ export default class DexcomPreferences extends ExtensionPreferences {
         page.add(group);
     }
 
-    _addSpinButton(group, settings, key, title, min, max, increment) {
+    _addSpinButton(group, settings, key, title, min, max, increment, isMmol = false) {
         const row = new Adw.ActionRow({ title });
         const spinButton = new Gtk.SpinButton({
             adjustment: new Gtk.Adjustment({
                 lower: min,
                 upper: max,
                 step_increment: increment,
+                page_increment: increment * 10,
+                page_size: 0
             }),
             valign: Gtk.Align.CENTER,
+            digits: isMmol ? 1 : 0, // Show decimal places for mmol/L
+            numeric: true
         });
 
-        settings.bind(key, spinButton, 'value', Gio.SettingsBindFlags.DEFAULT);
-        row.add_suffix(spinButton);
-        group.add(row);
+        // Get the stored value and convert if necessary
+        const storedValue = settings.get_int(key);
+        if (isMmol) {
+            spinButton.set_value(storedValue / 18.0);
+        } else {
+            spinButton.set_value(storedValue);
+        }
 
         spinButton.connect('value-changed', () => {
-            const value = spinButton.get_value();
-            const urgentHigh = settings.get_int('urgent-high-threshold');
-            const high = settings.get_int('high-threshold');
-            const low = settings.get_int('low-threshold');
-            const urgentLow = settings.get_int('urgent-low-threshold');
-
-            if (key === 'urgent-high-threshold' && value <= high) {
-                spinButton.set_value(high + 1);
-            } else if (key === 'high-threshold' && (value >= urgentHigh || value <= low)) {
-                spinButton.set_value(Math.min(urgentHigh - 1, Math.max(low + 1, value)));
-            } else if (key === 'low-threshold' && (value >= high || value <= urgentLow)) {
-                spinButton.set_value(Math.min(high - 1, Math.max(urgentLow + 1, value)));
-            } else if (key === 'urgent-low-threshold' && value >= low) {
-                spinButton.set_value(low - 1);
+            let value = spinButton.get_value();
+            if (isMmol) {
+                value = Math.round(value * 18.0); // Convert back to mg/dL for storage
             }
+            settings.set_int(key, value);
+
+            // Validate thresholds
+            this._validateThresholds(settings, key, value);
         });
+
+        row.add_suffix(spinButton);
+        group.add(row);
     }
+
+    _validateThresholds(settings, key, value) {
+        const urgentHigh = settings.get_int('urgent-high-threshold');
+        const high = settings.get_int('high-threshold');
+        const low = settings.get_int('low-threshold');
+        const urgentLow = settings.get_int('urgent-low-threshold');
+
+        // Ensure thresholds maintain proper order
+        switch (key) {
+            case 'urgent-high-threshold':
+                if (value <= high) {
+                    settings.set_int(key, high + 1);
+                }
+                break;
+            case 'high-threshold':
+                if (value >= urgentHigh) {
+                    settings.set_int(key, urgentHigh - 1);
+                } else if (value <= low) {
+                    settings.set_int(key, low + 1);
+                }
+                break;
+            case 'low-threshold':
+                if (value >= high) {
+                    settings.set_int(key, high - 1);
+                } else if (value <= urgentLow) {
+                    settings.set_int(key, urgentLow + 1);
+                }
+                break;
+            case 'urgent-low-threshold':
+                if (value >= low) {
+                    settings.set_int(key, low - 1);
+                }
+                break;
+            }
+        }
 
     _addColorButton(group, settings, key, title) {
         const row = new Adw.ActionRow({ title });

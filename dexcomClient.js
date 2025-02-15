@@ -201,65 +201,90 @@ export class DexcomClient {
             value = (reading.Value / 18.0).toFixed(1);
         }
     
-        // Calculate delta more accurately
+        // Initialize delta value
         let delta = 0;
-        if (this._previousReading && this._previousReading.Value !== reading.Value) {
+        const trend = this._normalizeTrend(reading.Trend);
+    
+        // Calculate actual delta if previous reading exists and isn't too old
+        if (this._previousReading && 
+            Math.abs(reading.WT - this._previousReading.WT) <= 600000) { // within 10 minutes
             const prevValue = this._unit === 'mmol/L' ? 
                 (this._previousReading.Value / 18.0) : 
                 this._previousReading.Value;
-                
             delta = value - prevValue;
         } else {
-            // If trend is downward, estimate a negative delta
-            if (reading.Trend === 'SingleDown') {
-                delta = -2.0;
-            } else if (reading.Trend === 'DoubleDown') {
-                delta = -4.0;
-            } else if (reading.Trend === 'FortyFiveDown') {
-                delta = -1.0;
-            } else if (reading.Trend === 'SingleUp') {
-                delta = 2.0;
-            } else if (reading.Trend === 'DoubleUp') {
-                delta = 4.0;
-            } else if (reading.Trend === 'FortyFiveUp') {
-                delta = 1.0;
+            // Estimate delta based on trend arrow if no valid previous reading
+            switch(trend) {
+                case 'DOUBLE_UP':
+                    delta = 3.0;
+                    break;
+                case 'SINGLE_UP':
+                    delta = 2.0;
+                    break;
+                case 'FORTY_FIVE_UP':
+                    delta = 1.0;
+                    break;
+                case 'FLAT':
+                    delta = 0.0;
+                    break;
+                case 'FORTY_FIVE_DOWN':
+                    delta = -1.0;
+                    break;
+                case 'SINGLE_DOWN':
+                    delta = -2.0;
+                    break;
+                case 'DOUBLE_DOWN':
+                    delta = -3.0;
+                    break;
+                default:
+                    delta = 0.0;
             }
+        }
+    
+        // Convert delta to mmol/L if needed
+        if (this._unit === 'mmol/L') {
+            delta = (delta / 18.0);
         }
     
         // Store current reading for next delta calculation
         this._previousReading = {...reading};
     
-        // Normalize trend value
-        const trend = this._normalizeTrend(reading.Trend);
-    
-        return {
+        // Create formatted reading object
+        const formattedReading = {
             value: value,
             unit: this._unit,
             trend: trend,
             timestamp: new Date(parseInt(reading.WT.match(/\d+/)[0])),
             delta: delta.toFixed(1)
         };
+    
+        console.log('Formatted reading:', formattedReading);
+        return formattedReading;
     }
 
     // Helper function to normalize trend values
     _normalizeTrend(trend) {
-        const trendMap = {
-            'NONE': 'NONE',
-            'DOUBLEUP': 'DOUBLE_UP',
-            'SINGLEUP': 'SINGLE_UP',
-            'FORTYFIVEUP': 'FORTY_FIVE_UP',
-            'FLAT': 'FLAT',
-            'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
-            'SINGLEDOWN': 'SINGLE_DOWN',
-            'DOUBLEDOWN': 'DOUBLE_DOWN',
-            'NOTCOMPUTABLE': 'NOT_COMPUTABLE',
-            'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
-        };
+    // Normalize input trend value
+    const normalizedInput = String(trend || '')
+        .toUpperCase()
+        .replace(/\s+/g, '')
+        .replace(/-/g, '');
 
-        const normalizedTrend = String(trend).toUpperCase()
-            .replace(/\s+/g, '')
-            .replace(/-/g, '');
+    // Define trend mappings
+    const trendMap = {
+        'NONE': 'FLAT',  // Map NONE to FLAT for better UX
+        'DOUBLEUP': 'DOUBLE_UP',
+        'SINGLEUP': 'SINGLE_UP',
+        'FORTYFIVEUP': 'FORTY_FIVE_UP',
+        'FLAT': 'FLAT',
+        'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
+        'SINGLEDOWN': 'SINGLE_DOWN',
+        'DOUBLEDOWN': 'DOUBLE_DOWN',
+        'NOTCOMPUTABLE': 'NOT_COMPUTABLE',
+        'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
+    };
 
-        return trendMap[normalizedTrend] || trend;
+    // Return mapped trend or default to FLAT if unknown
+    return trendMap[normalizedInput] || 'FLAT';
     }
 }

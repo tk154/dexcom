@@ -84,7 +84,7 @@ class DexcomIndicator extends PanelMenu.Button {
         try {
             this._loadIcon();
         } catch (error) {
-            console.error('Error initializing icon:', error);
+            console.log('Error initializing icon:', error);
             // Fallback icon
             this.icon = new St.Icon({
                 icon_name: 'utilities-system-monitor-symbolic',
@@ -238,7 +238,7 @@ class DexcomIndicator extends PanelMenu.Button {
         this._updateDisplay(reading);
         this._updateMenuInfo(reading);
     } catch (error) {
-        console.error('Error fetching Dexcom reading:', error);
+        console.log('Error fetching Dexcom reading:', error);
 
         let errorMessage = 'Error';
         let detailedMessage = error.message;
