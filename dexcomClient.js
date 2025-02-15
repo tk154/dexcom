@@ -195,55 +195,49 @@ export class DexcomClient {
     }
 
     _formatReading(reading) {
-        // Calculate value based on unit
+        // Parse timestamps properly
+        const currentTimestamp = parseInt(reading.WT.match(/\d+/)[0]);
+        
+        // Calculate base value
         let value = reading.Value;
         if (this._unit === 'mmol/L') {
             value = (reading.Value / 18.0).toFixed(1);
         }
     
-        // Initialize delta value
+        // Initialize delta
         let delta = 0;
         const trend = this._normalizeTrend(reading.Trend);
     
-        // Calculate actual delta if previous reading exists and isn't too old
-        if (this._previousReading && 
-            Math.abs(reading.WT - this._previousReading.WT) <= 600000) { // within 10 minutes
-            const prevValue = this._unit === 'mmol/L' ? 
-                (this._previousReading.Value / 18.0) : 
-                this._previousReading.Value;
-            delta = value - prevValue;
-        } else {
-            // Estimate delta based on trend arrow if no valid previous reading
-            switch(trend) {
-                case 'DOUBLE_UP':
-                    delta = 3.0;
-                    break;
-                case 'SINGLE_UP':
-                    delta = 2.0;
-                    break;
-                case 'FORTY_FIVE_UP':
-                    delta = 1.0;
-                    break;
-                case 'FLAT':
-                    delta = 0.0;
-                    break;
-                case 'FORTY_FIVE_DOWN':
-                    delta = -1.0;
-                    break;
-                case 'SINGLE_DOWN':
-                    delta = -2.0;
-                    break;
-                case 'DOUBLE_DOWN':
-                    delta = -3.0;
-                    break;
-                default:
-                    delta = 0.0;
+        // Calculate delta if previous reading exists
+        if (this._previousReading) {
+            const prevTimestamp = parseInt(this._previousReading.WT.match(/\d+/)[0]);
+            const timeDiff = currentTimestamp - prevTimestamp;
+    
+            // Only calculate delta if readings are within 15 minutes
+            if (timeDiff <= 900000) { // 15 minutes in milliseconds
+                const prevValue = this._previousReading.Value;
+                delta = reading.Value - prevValue;
+    
+                // Convert to mmol/L if needed
+                if (this._unit === 'mmol/L') {
+                    delta = (delta / 18.0);
+                }
             }
         }
     
-        // Convert delta to mmol/L if needed
-        if (this._unit === 'mmol/L') {
-            delta = (delta / 18.0);
+        // If no delta calculated from readings, estimate from trend
+        if (delta === 0) {
+            const trendDeltas = {
+                'DOUBLE_UP': this._unit === 'mmol/L' ? 0.17 : 3.0,
+                'SINGLE_UP': this._unit === 'mmol/L' ? 0.11 : 2.0,
+                'FORTY_FIVE_UP': this._unit === 'mmol/L' ? 0.06 : 1.0,
+                'FLAT': 0.0,
+                'FORTY_FIVE_DOWN': this._unit === 'mmol/L' ? -0.06 : -1.0,
+                'SINGLE_DOWN': this._unit === 'mmol/L' ? -0.11 : -2.0,
+                'DOUBLE_DOWN': this._unit === 'mmol/L' ? -0.17 : -3.0
+            };
+    
+            delta = trendDeltas[trend] || 0;
         }
     
         // Store current reading for next delta calculation
@@ -254,8 +248,8 @@ export class DexcomClient {
             value: value,
             unit: this._unit,
             trend: trend,
-            timestamp: new Date(parseInt(reading.WT.match(/\d+/)[0])),
-            delta: delta.toFixed(1)
+            timestamp: new Date(currentTimestamp),
+            delta: Number(delta).toFixed(1)
         };
     
         console.log('Formatted reading:', formattedReading);
