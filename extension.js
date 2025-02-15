@@ -15,7 +15,7 @@ class DexcomIndicator extends PanelMenu.Button {
     _init(settings) {
         super._init(0.0, 'Dexcom Indicator');
         this._settings = settings;
-        // Path henüz tanımlı değil, constructor'da almamız gerek
+        
         this.path = null;
 
         // Create container box
@@ -171,7 +171,7 @@ class DexcomIndicator extends PanelMenu.Button {
     }
 
     _updateUnit() {
-        // DexcomClient'ı yeni birimle güncelleyin
+        // Update DexcomClient with new unit
         this._dexcomClient = new DexcomClient(
             this._settings.get_string('username'),
             this._settings.get_string('password'),
@@ -179,7 +179,7 @@ class DexcomIndicator extends PanelMenu.Button {
             this._settings.get_string('unit')
         );
     
-        // Mevcut okumayı yeni birimle güncelleyin
+
         if (this._currentReading) {
             const value = this._settings.get_string('unit') === 'mmol/L' 
                 ? (this._currentReading.value / 18.0).toFixed(1) 
@@ -200,7 +200,7 @@ class DexcomIndicator extends PanelMenu.Button {
             this._updateMenuInfo(updatedReading);
         }
     
-        // Yeni okuma alın
+        // Force an immediate reading update
         this._updateReading();
     }
     
@@ -306,7 +306,7 @@ class DexcomIndicator extends PanelMenu.Button {
             color = urgentLowColor;
         }
         
-        // Doğrudan stil olarak rengi uygula
+        
         this.buttonText.style = `color: ${color};`;
         return styleClass;
     }
