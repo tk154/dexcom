@@ -523,18 +523,28 @@ _addAdditionalElements(reading, style) {
         this.menu.addMenuItem(settingsButton);
     }
     _getBackgroundClass(value) {
-        // Get threshold values from settings
-        const urgentHigh = this._settings.get_int('urgent-high-threshold');
-        const high = this._settings.get_int('high-threshold');
-        const low = this._settings.get_int('low-threshold');
-        const urgentLow = this._settings.get_int('urgent-low-threshold');
+        // Convert thresholds to the current unit if needed
+        const isMmol = this._settings.get_string('unit') === 'mmol/L';
+        const convertToCurrentUnit = (mgdlValue) => {
+            return isMmol ? (mgdlValue / 18.0).toFixed(1) : mgdlValue;
+        };
+    
+        // Get threshold values and convert if necessary
+        const thresholds = {
+            urgentHigh: convertToCurrentUnit(this._settings.get_int('urgent-high-threshold')),
+            high: convertToCurrentUnit(this._settings.get_int('high-threshold')),
+            low: convertToCurrentUnit(this._settings.get_int('low-threshold')),
+            urgentLow: convertToCurrentUnit(this._settings.get_int('urgent-low-threshold'))
+        };
     
         // Get colors from settings
-        const urgentHighColor = this._settings.get_string('urgent-high-color');
-        const highColor = this._settings.get_string('high-color');
-        const normalColor = this._settings.get_string('normal-color');
-        const lowColor = this._settings.get_string('low-color');
-        const urgentLowColor = this._settings.get_string('urgent-low-color');
+        const colors = {
+            urgentHigh: this._settings.get_string('urgent-high-color'),
+            high: this._settings.get_string('high-color'),
+            normal: this._settings.get_string('normal-color'),
+            low: this._settings.get_string('low-color'),
+            urgentLow: this._settings.get_string('urgent-low-color')
+        };
     
         // Helper function to convert hex to rgba
         const hexToRgba = (hex, alpha) => {
@@ -544,35 +554,45 @@ _addAdditionalElements(reading, style) {
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         };
     
+        // Compare using current unit values
         let styleClass = 'dexcom-value-container';
         let color, bgColor, borderColor;
     
-        if (value >= urgentHigh) {
-            color = urgentHighColor;
-            bgColor = hexToRgba(urgentHighColor, 0.2);
-            borderColor = hexToRgba(urgentHighColor, 0.4);
-        } else if (value >= high) {
-            color = highColor;
-            bgColor = hexToRgba(highColor, 0.2);
-            borderColor = hexToRgba(highColor, 0.4);
-        } else if (value > low) {
-            color = normalColor;
-            bgColor = hexToRgba(normalColor, 0.2);
-            borderColor = hexToRgba(normalColor, 0.4);
-        } else if (value > urgentLow) {
-            color = lowColor;
-            bgColor = hexToRgba(lowColor, 0.2);
-            borderColor = hexToRgba(lowColor, 0.4);
+        // Convert value to float for comparison if it's a string
+        const numericValue = parseFloat(value);
+    
+        if (numericValue >= thresholds.urgentHigh) {
+            color = colors.urgentHigh;
+            bgColor = hexToRgba(colors.urgentHigh, 0.2);
+            borderColor = hexToRgba(colors.urgentHigh, 0.4);
+        } else if (numericValue >= thresholds.high) {
+            color = colors.high;
+            bgColor = hexToRgba(colors.high, 0.2);
+            borderColor = hexToRgba(colors.high, 0.4);
+        } else if (numericValue > thresholds.low) {
+            color = colors.normal;
+            bgColor = hexToRgba(colors.normal, 0.2);
+            borderColor = hexToRgba(colors.normal, 0.4);
+        } else if (numericValue > thresholds.urgentLow) {
+            color = colors.low;
+            bgColor = hexToRgba(colors.low, 0.2);
+            borderColor = hexToRgba(colors.low, 0.4);
         } else {
-            color = urgentLowColor;
-            bgColor = hexToRgba(urgentLowColor, 0.2);
-            borderColor = hexToRgba(urgentLowColor, 0.4);
+            color = colors.urgentLow;
+            bgColor = hexToRgba(colors.urgentLow, 0.2);
+            borderColor = hexToRgba(colors.urgentLow, 0.4);
         }
+    
+        console.log('Color thresholds:', {
+            unit: this._settings.get_string('unit'),
+            value: numericValue,
+            thresholds,
+            selectedColor: color
+        });
     
         const style = `background-color: ${bgColor}; border-color: ${borderColor}; color: ${color};`;
         return { styleClass, style };
-    }
-    
+    }    
     // Update _updateMenuInfo function in extension.js
     _updateMenuInfo(reading) {
         if (!reading) {
