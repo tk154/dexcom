@@ -9,6 +9,8 @@ export class DexcomClient {
         this._username = username;
         this._password = password;
         this._region = region.toLowerCase();
+        this._previousReading = null;
+        this._previousDelta = null;
         
         // Update base URLs and handling
         this._baseUrls = {
@@ -107,7 +109,11 @@ export class DexcomClient {
         }
     }
 
-
+    // dexcomClient.js içine eklenecek debug fonksiyonu
+    _logDebugInfo(stage, data) {
+        const timestamp = new Date().toISOString();
+        console.log(`[DEBUG ${timestamp}] ${stage}:`, JSON.stringify(data, null, 2));
+    }
     
     async authenticate() {
         try {
@@ -162,6 +168,7 @@ export class DexcomClient {
     async getLatestGlucose() {
         try {
             if (!this._sessionId) {
+                console.log('[DEBUG] No session ID, authenticating...');
                 await this.authenticate();
             }
     
@@ -172,28 +179,33 @@ export class DexcomClient {
                 maxCount: 1
             };
     
-            console.log('Fetching latest glucose reading...');
-            const readings = await this._makeRequest(url, 'GET', null, params); // Changed to GET method
+            console.log('[DEBUG] Fetching glucose readings from:', url);
+            console.log('[DEBUG] Using params:', JSON.stringify(params));
+            
+            const readings = await this._makeRequest(url, 'GET', null, params);
+            console.log('[DEBUG] Raw API response:', JSON.stringify(readings));
             
             if (!Array.isArray(readings) || readings.length === 0) {
-                console.log('No readings available');
+                console.log('[DEBUG] No readings available in response');
                 throw new Error('No readings available');
             }
     
+            console.log('[DEBUG] Processing reading:', JSON.stringify(readings[0]));
             const reading = this._formatReading(readings[0]);
-            console.log('Latest reading:', reading);
             return reading;
     
         } catch (error) {
+            console.log('[DEBUG] Error in getLatestGlucose:', error.message);
+            
             if (error.message.includes('SessionIdNotFound')) {
-                console.log('Session expired, re-authenticating...');
+                console.log('[DEBUG] Session expired, re-authenticating...');
                 this._sessionId = null;
                 return this.getLatestGlucose();
             }
             throw error;
         }
     }
-
+    
     _formatReading(reading) {
         // Parse timestamps properly
         const currentTimestamp = parseInt(reading.WT.match(/\d+/)[0]);
@@ -206,7 +218,8 @@ export class DexcomClient {
     
         // Initialize delta
         let delta = 0;
-        
+        const trend = this._normalizeTrend(reading.Trend);
+    
         // Calculate delta if previous reading exists
         if (this._previousReading) {
             const prevTimestamp = parseInt(this._previousReading.WT.match(/\d+/)[0]);
@@ -224,7 +237,16 @@ export class DexcomClient {
             }
         }
     
-        // If no delta calculated from readings, estimate from trend
+        // If delta is 0 but we have a previous delta, preserve trend information
+        if (delta === 0 && this._previousDelta) {
+            // Only preserve small trend changes, not big jumps
+            if (Math.abs(this._previousDelta) <= 2.0) {
+                delta = this._previousDelta;
+                console.log('[DEBUG] Preserving previous delta:', delta);
+            }
+        }
+    
+        // If still no delta calculated from readings, estimate from trend
         if (delta === 0) {
             const trendDeltas = {
                 'DOUBLE_UP': this._unit === 'mmol/L' ? 0.17 : 3.0,
@@ -236,36 +258,40 @@ export class DexcomClient {
                 'DOUBLE_DOWN': this._unit === 'mmol/L' ? -0.17 : -3.0
             };
     
-            const normalizedTrend = this._normalizeTrend(reading.Trend);
-            delta = trendDeltas[normalizedTrend] || 0;
+            delta = trendDeltas[trend] || 0;
         }
     
         // Normalize trend with delta check for consistency
-        const trend = this._normalizeTrend(reading.Trend, delta);
+        const finalTrend = this._normalizeTrend(reading.Trend, delta);
     
         // Store current reading for next delta calculation
         this._previousReading = {...reading};
+        // Store current delta for next calculation
+        this._previousDelta = delta;
     
         // Create formatted reading object
         const formattedReading = {
             value: value,
             unit: this._unit,
-            trend: trend,
+            trend: finalTrend,
             timestamp: new Date(currentTimestamp),
             delta: Number(delta).toFixed(1)
         };
     
-        console.log('Formatted reading:', formattedReading);
+        console.log('[DEBUG] Formatted reading:', formattedReading);
         return formattedReading;
     }
-
     // Helper function to normalize trend values
     _normalizeTrend(trend, delta = null) {
+        console.log('[DEBUG] _normalizeTrend input:', trend, 'delta:', delta);
+        
         // Normalize input trend value
         const normalizedInput = String(trend || '')
             .toUpperCase()
             .replace(/\s+/g, '')
             .replace(/-/g, '');
+    
+        console.log('[DEBUG] Normalized trend input:', normalizedInput);
     
         // Define trend mappings
         const trendMap = {
@@ -283,20 +309,34 @@ export class DexcomClient {
     
         // Get mapped trend
         let mappedTrend = trendMap[normalizedInput] || 'FLAT';
+        console.log('[DEBUG] Initial mapped trend:', mappedTrend);
     
         // Delta and trend consistency check
         if (delta !== null) {
+            const originalTrend = mappedTrend;
+            
             if (delta < -3.0 && (mappedTrend === 'FLAT' || mappedTrend === 'FORTY_FIVE_UP' || mappedTrend === 'SINGLE_UP')) {
                 mappedTrend = 'SINGLE_DOWN';
+                console.log('[DEBUG] Trend corrected: Large negative delta -> SINGLE_DOWN');
             } else if (delta < -1.0 && mappedTrend === 'FLAT') {
                 mappedTrend = 'FORTY_FIVE_DOWN';
+                console.log('[DEBUG] Trend corrected: Small negative delta -> FORTY_FIVE_DOWN');
             } else if (delta > 1.0 && delta < 3.0 && mappedTrend === 'FLAT') {
                 mappedTrend = 'FORTY_FIVE_UP';
+                console.log('[DEBUG] Trend corrected: Small positive delta -> FORTY_FIVE_UP');
             } else if (delta > 3.0 && (mappedTrend === 'FLAT' || mappedTrend === 'FORTY_FIVE_DOWN' || mappedTrend === 'SINGLE_DOWN')) {
                 mappedTrend = 'SINGLE_UP';
+                console.log('[DEBUG] Trend corrected: Large positive delta -> SINGLE_UP');
+            }
+            
+            if (originalTrend !== mappedTrend) {
+                console.log('[DEBUG] Trend correction applied:', originalTrend, '->', mappedTrend);
+            } else {
+                console.log('[DEBUG] No trend correction needed');
             }
         }
     
+        console.log('[DEBUG] Final normalized trend:', mappedTrend);
         return mappedTrend;
     }
 }
