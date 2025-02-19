@@ -563,23 +563,23 @@ _addAdditionalElements(reading, style) {
     
         if (numericValue >= thresholds.urgentHigh) {
             color = colors.urgentHigh;
-            bgColor = hexToRgba(colors.urgentHigh, 0.2);
+            //bgColor = hexToRgba(colors.urgentHigh, 0.2);
             borderColor = hexToRgba(colors.urgentHigh, 0.4);
         } else if (numericValue >= thresholds.high) {
             color = colors.high;
-            bgColor = hexToRgba(colors.high, 0.2);
+            //bgColor = hexToRgba(colors.high, 0.2);
             borderColor = hexToRgba(colors.high, 0.4);
         } else if (numericValue > thresholds.low) {
             color = colors.normal;
-            bgColor = hexToRgba(colors.normal, 0.2);
+            //bgColor = hexToRgba(colors.normal, 0.2);
             borderColor = hexToRgba(colors.normal, 0.4);
         } else if (numericValue > thresholds.urgentLow) {
             color = colors.low;
-            bgColor = hexToRgba(colors.low, 0.2);
+            //bgColor = hexToRgba(colors.low, 0.2);
             borderColor = hexToRgba(colors.low, 0.4);
         } else {
             color = colors.urgentLow;
-            bgColor = hexToRgba(colors.urgentLow, 0.2);
+            //bgColor = hexToRgba(colors.urgentLow, 0.2);
             borderColor = hexToRgba(colors.urgentLow, 0.4);
         }
     

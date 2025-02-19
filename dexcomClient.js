@@ -206,8 +206,7 @@ export class DexcomClient {
     
         // Initialize delta
         let delta = 0;
-        const trend = this._normalizeTrend(reading.Trend);
-    
+        
         // Calculate delta if previous reading exists
         if (this._previousReading) {
             const prevTimestamp = parseInt(this._previousReading.WT.match(/\d+/)[0]);
@@ -237,8 +236,12 @@ export class DexcomClient {
                 'DOUBLE_DOWN': this._unit === 'mmol/L' ? -0.17 : -3.0
             };
     
-            delta = trendDeltas[trend] || 0;
+            const normalizedTrend = this._normalizeTrend(reading.Trend);
+            delta = trendDeltas[normalizedTrend] || 0;
         }
+    
+        // Normalize trend with delta check for consistency
+        const trend = this._normalizeTrend(reading.Trend, delta);
     
         // Store current reading for next delta calculation
         this._previousReading = {...reading};
@@ -257,28 +260,43 @@ export class DexcomClient {
     }
 
     // Helper function to normalize trend values
-    _normalizeTrend(trend) {
-    // Normalize input trend value
-    const normalizedInput = String(trend || '')
-        .toUpperCase()
-        .replace(/\s+/g, '')
-        .replace(/-/g, '');
-
-    // Define trend mappings
-    const trendMap = {
-        'NONE': 'FLAT',  // Map NONE to FLAT for better UX
-        'DOUBLEUP': 'DOUBLE_UP',
-        'SINGLEUP': 'SINGLE_UP',
-        'FORTYFIVEUP': 'FORTY_FIVE_UP',
-        'FLAT': 'FLAT',
-        'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
-        'SINGLEDOWN': 'SINGLE_DOWN',
-        'DOUBLEDOWN': 'DOUBLE_DOWN',
-        'NOTCOMPUTABLE': 'NOT_COMPUTABLE',
-        'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
-    };
-
-    // Return mapped trend or default to FLAT if unknown
-    return trendMap[normalizedInput] || 'FLAT';
+    _normalizeTrend(trend, delta = null) {
+        // Normalize input trend value
+        const normalizedInput = String(trend || '')
+            .toUpperCase()
+            .replace(/\s+/g, '')
+            .replace(/-/g, '');
+    
+        // Define trend mappings
+        const trendMap = {
+            'NONE': 'FLAT',  // Map NONE to FLAT for better UX
+            'DOUBLEUP': 'DOUBLE_UP',
+            'SINGLEUP': 'SINGLE_UP',
+            'FORTYFIVEUP': 'FORTY_FIVE_UP',
+            'FLAT': 'FLAT',
+            'FORTYFIVEDOWN': 'FORTY_FIVE_DOWN',
+            'SINGLEDOWN': 'SINGLE_DOWN',
+            'DOUBLEDOWN': 'DOUBLE_DOWN',
+            'NOTCOMPUTABLE': 'NOT_COMPUTABLE',
+            'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
+        };
+    
+        // Get mapped trend
+        let mappedTrend = trendMap[normalizedInput] || 'FLAT';
+    
+        // Delta and trend consistency check
+        if (delta !== null) {
+            if (delta < -3.0 && (mappedTrend === 'FLAT' || mappedTrend === 'FORTY_FIVE_UP' || mappedTrend === 'SINGLE_UP')) {
+                mappedTrend = 'SINGLE_DOWN';
+            } else if (delta < -1.0 && mappedTrend === 'FLAT') {
+                mappedTrend = 'FORTY_FIVE_DOWN';
+            } else if (delta > 1.0 && delta < 3.0 && mappedTrend === 'FLAT') {
+                mappedTrend = 'FORTY_FIVE_UP';
+            } else if (delta > 3.0 && (mappedTrend === 'FLAT' || mappedTrend === 'FORTY_FIVE_DOWN' || mappedTrend === 'SINGLE_DOWN')) {
+                mappedTrend = 'SINGLE_UP';
+            }
+        }
+    
+        return mappedTrend;
     }
 }
