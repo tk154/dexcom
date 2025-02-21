@@ -8,32 +8,41 @@ export class DexcomClient {
     constructor(username, password, region = 'ous', unit = 'mg/dL') {
         this._username = username;
         this._password = password;
-        this._region = region.toLowerCase();
-        this._previousReading = null;
-        this._previousDelta = null;
         
-        // Update base URLs and handling
+        // Standardize region value
+        region = region.toLowerCase().trim();
+        
+        // Expand region mappings for better compatibility
+        const regionMap = {
+            'us': 'us',
+            'usa': 'us',
+            'united states': 'us',
+            'non-us': 'ous',
+            'non_us': 'ous',
+            'ous': 'ous',
+            'outside us': 'ous'
+        };
+        
+        this._region = regionMap[region] || 'ous';
+        
+        // Update base URLs for each region
         this._baseUrls = {
             'us': 'https://share2.dexcom.com',
-            'non-us': 'https://shareous1.dexcom.com',
-            'non_us': 'https://shareous1.dexcom.com',
             'ous': 'https://shareous1.dexcom.com'
         };
         
-        // Set base URL based on region
-        this._baseUrl = this._baseUrls[this._region] || this._baseUrls['ous'];
-        
+        this._baseUrl = this._baseUrls[this._region];
+        this._unit = unit;
         this._applicationId = 'd89443d2-327c-4a6f-89e5-496bbb0317db';
         this._agent = 'Dexcom Share/3.0.2.11';
         this._sessionId = null;
         this._accountId = null;
-        this._unit = unit;
         
-        // Configure session
+        // Configure session settings
         this._session = new Soup.Session();
         this._session.timeout = 30;
         
-        // Debug info
+        // Log initialization details for debugging
         console.log('DexcomClient initialized:', {
             region: this._region,
             baseUrl: this._baseUrl,
@@ -115,54 +124,64 @@ export class DexcomClient {
         console.log(`[DEBUG ${timestamp}] ${stage}:`, JSON.stringify(data, null, 2));
     }
     
-    async authenticate() {
-        try {
-            // Validate credentials
-            if (!this._username || !this._password) {
-                throw new Error('Username and password are required');
-            }
-
-            // Step 1: Authentication
-            const authUrl = `${this._baseUrl}/ShareWebServices/Services/General/AuthenticatePublisherAccount`;
-            const authPayload = {
-                accountName: this._username,
-                password: this._password,
-                applicationId: this._applicationId
-            };
-
-            console.log('Attempting authentication...');
-            this._accountId = await this._makeRequest(authUrl, 'POST', authPayload);
-
-            // Validate accountId
-            if (!this._accountId || typeof this._accountId !== 'string') {
-                throw new Error('Invalid account ID received');
-            }
-
-            // Step 2: Login
-            const loginUrl = `${this._baseUrl}/ShareWebServices/Services/General/LoginPublisherAccountById`;
-            const loginPayload = {
-                accountId: this._accountId,
-                password: this._password,
-                applicationId: this._applicationId
-            };
-
-            this._sessionId = await this._makeRequest(loginUrl, 'POST', loginPayload);
-
-            // Validate sessionId
-            if (!this._sessionId || this._sessionId === '00000000-0000-0000-0000-000000000000') {
-                throw new Error('Invalid session ID received');
-            }
-
-            console.log('Authentication successful');
-            return this._sessionId;
-
-        } catch (error) {
-            console.error('Authentication error:', error);
-            this._sessionId = null;
-            this._accountId = null;
-            throw error;
+ // Enhanced authentication function with better error handling
+async authenticate() {
+    try {
+        // Validate credentials
+        if (!this._username || !this._password) {
+            throw new Error('Username and password are required');
         }
+
+        console.log('Starting authentication for region:', this._region);
+        console.log('Using base URL:', this._baseUrl);
+
+        // Step 1: Initial authentication
+        const authUrl = `${this._baseUrl}/ShareWebServices/Services/General/AuthenticatePublisherAccount`;
+        const authPayload = {
+            accountName: this._username,
+            password: this._password,
+            applicationId: this._applicationId
+        };
+
+        console.log('Attempting initial authentication...');
+        this._accountId = await this._makeRequest(authUrl, 'POST', authPayload);
+
+        // Validate account ID
+        if (!this._accountId || typeof this._accountId !== 'string') {
+            throw new Error('Invalid account ID received');
+        }
+
+        console.log('Account ID received:', this._accountId);
+
+        // Step 2: Session login
+        const loginUrl = `${this._baseUrl}/ShareWebServices/Services/General/LoginPublisherAccountById`;
+        const loginPayload = {
+            accountId: this._accountId,
+            password: this._password,
+            applicationId: this._applicationId
+        };
+
+        this._sessionId = await this._makeRequest(loginUrl, 'POST', loginPayload);
+
+        // Validate session ID
+        if (!this._sessionId || this._sessionId === '00000000-0000-0000-0000-000000000000') {
+            throw new Error('Invalid session ID received');
+        }
+
+        console.log('Authentication successful, session ID received');
+        return this._sessionId;
+
+    } catch (error) {
+        console.error('Authentication error:', error.message);
+        if (error.message.includes('500')) {
+            console.error('Server error details:', error);
+        }
+        // Clear session data on error
+        this._sessionId = null;
+        this._accountId = null;
+        throw error;
     }
+}
 
 
     async getLatestGlucose() {

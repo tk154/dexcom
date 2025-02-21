@@ -221,50 +221,61 @@ class DexcomIndicator extends PanelMenu.Button {
     }
 
     // Update the reading from Dexcom
-  async _updateReading() {
-    if (!this._dexcomClient) {
-        this._updateDisplayError('Setup Required', 'Please configure your Dexcom Share credentials');
-        return;
-    }
-
-    try {
-        const reading = await this._dexcomClient.getLatestGlucose();
-        
-        if (!reading) {
-            this._updateDisplayError('No Data', 'No glucose data available');
+    async _updateReading() {
+        // Check if client is properly initialized
+        if (!this._dexcomClient) {
+            this._updateDisplayError('Setup Required', 'Please configure your Dexcom Share credentials');
             return;
         }
-
-        this._updateDisplay(reading);
-        this._updateMenuInfo(reading);
-    } catch (error) {
-        console.log('Error fetching Dexcom reading:', error);
-
-        let errorMessage = 'Error';
-        let detailedMessage = error.message;
-
-        if (error.message.includes('Authentication failed') || 
-            error.message.includes('Invalid credentials')) {
-            errorMessage = 'Auth Error';
-            detailedMessage = 'Please check your Dexcom Share credentials';
+    
+        try {
+            // Attempt to fetch latest glucose reading
+            const reading = await this._dexcomClient.getLatestGlucose();
             
-            // Force credentials update
-            this._dexcomClient = null;
-            await this._updateCredentials();
-        } else if (error.message.includes('Session expired')) {
-            // Just retry on session expiry
-            await this._updateReading();
-            return;
-        } else if (error.message.includes('network') || error.message.includes('timeout')) {
-            errorMessage = 'Network Error';
-            detailedMessage = 'Please check your internet connection';
+            // Handle case where no reading is available
+            if (!reading) {
+                this._updateDisplayError('No Data', 'No glucose data available');
+                return;
+            }
+    
+            // Update display with new reading
+            this._updateDisplay(reading);
+            this._updateMenuInfo(reading);
+        } catch (error) {
+            console.log('Error fetching Dexcom reading:', error);
+    
+            let errorMessage = 'Error';
+            let detailedMessage = error.message;
+    
+            // Analyze error messages and provide appropriate responses
+            if (error.message.includes('AccountPasswordInvalid')) {
+                errorMessage = 'Auth Error';
+                detailedMessage = 'Invalid username or password';
+                
+                // Reset credentials and attempt to update
+                this._dexcomClient = null;
+                await this._updateCredentials();
+            } else if (error.message.includes('AccountNotFound')) {
+                errorMessage = 'Auth Error';
+                detailedMessage = 'Account not found';
+            } else if (error.message.includes('SSO_AuthenticatePasswordInvalid')) {
+                errorMessage = 'Auth Error';
+                detailedMessage = 'Invalid password';
+            } else if (error.message.includes('Session')) {
+                // Retry on session errors
+                await this._updateReading();
+                return;
+            } else if (error.message.includes('network') || error.message.includes('timeout')) {
+                errorMessage = 'Network Error';
+                detailedMessage = 'Please check your internet connection';
+            }
+    
+            // Display error message to user
+            this._updateDisplayError(errorMessage, detailedMessage);
         }
-
-        this._updateDisplayError(errorMessage, detailedMessage);
     }
-}
 
-    // Add helper function for error display
+    // Helper function to update the display with error messages
     _updateDisplayError(errorMessage, detailedMessage) {
         this.buttonText.text = errorMessage;
         this.buttonText.style_class = 'dexcom-label dexcom-error';
