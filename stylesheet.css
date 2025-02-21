@@ -1,7 +1,7 @@
 /* stylesheet.css */
 
 .dexcom-box {
-    spacing: 4px;
+    spacing: 2px;
     padding: 2px 6px;
 }
 
@@ -9,7 +9,7 @@
     width: 16px;
     height: 16px;
     padding: 0;
-    margin-right: 2px;
+    margin-right: 1px;
 }
 
 /* Background colors with improved visibility */
@@ -70,7 +70,7 @@
     border: 1px solid rgba(0, 0, 0, 0.15);
 } */
 .dexcom-value-container {
-    padding: 2px 2px;
+    padding: 1px 1px;
     border-radius: 4px;
     margin: 2px 0;
     height: 1.4em;
@@ -87,15 +87,15 @@
 }
 .dexcom-trend {
     font-size: 14px;
-    margin-left: 2px;
+    margin-left: 1px;
     font-weight: bold;
 }
 .dexcom-delta {
     font-size: 12px;
-    margin-left: 2px;
+    margin-left: 1px;
 }
 .dexcom-time {
     font-size: 11px;
-    margin-left: 2px;
-    margin-right: 2px;
+    margin-left: 1px;
+    margin-right: 1px;
 }
