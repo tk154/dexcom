@@ -1,41 +1,15 @@
 /* stylesheet.css */
 
-.dexcom-box {
-    spacing: 2px;
-    padding: 2px 6px;
+/* Reset box styling */
+.panel-status-menu-box {
+    spacing: 2px; /* Reduce spacing between items */
 }
 
 .dexcom-icon {
     width: 16px;
     height: 16px;
     padding: 0;
-    margin-right: 1px;
-}
-
-/* Background colors with improved visibility */
-.bg-urgent-high {
-    background-color: rgba(255, 0, 0, 0.2);
-    border-color: rgba(255, 0, 0, 0.4);
-}
-
-.bg-high {
-    background-color: rgba(255, 165, 0, 0.2);
-    border-color: rgba(255, 165, 0, 0.4);
-}
-
-.bg-normal {
-    background-color: rgba(0, 255, 0, 0.2);
-    border-color: rgba(0, 255, 0, 0.4);
-}
-
-.bg-low {
-    background-color: rgba(255, 165, 0, 0.2);
-    border-color: rgba(255, 165, 0, 0.4);
-}
-
-.bg-urgent-low {
-    background-color: rgba(255, 0, 0, 0.2);
-    border-color: rgba(255, 0, 0, 0.4);
+    margin: 0 1px;
 }
 
 /* Error state styling */
@@ -60,40 +34,36 @@
 .dexcom-refresh-button:active {
     background-color: rgba(64, 132, 214, 0.25);
 }
-/* .dexcom-value-container {
-    padding: 1px 6px;
-    border-radius: 3px;
-    margin: 2px 0;
-    height: 1.4em;
-    display: flex;
-    align-items: center;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-} */
+
 .dexcom-value-container {
-    padding: 1px 1px;
+    padding: 1px 2px;
     border-radius: 4px;
-    margin: 2px 0;
+    margin: 1px 0;
     height: 1.4em;
     display: flex;
     align-items: center;
     border-width: 1px;
     border-style: solid;
 }
+
 .dexcom-value {
     font-size: 14px;
     font-weight: bold;
     text-align: center;
-    margin: 0 1px;
+    margin: 0;
 }
+
 .dexcom-trend {
     font-size: 14px;
     margin-left: 1px;
     font-weight: bold;
 }
+
 .dexcom-delta {
     font-size: 12px;
     margin-left: 1px;
 }
+
 .dexcom-time {
     font-size: 11px;
     margin-left: 1px;

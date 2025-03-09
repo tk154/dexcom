@@ -325,13 +325,14 @@ class DexcomIndicator extends PanelMenu.Button {
     _updateIconVisibility() {
         // First, remove all existing children
         this.box.remove_all_children();
+        
+        // Reset style class to ensure consistent appearance
+        this.box.style_class = '';
+        this.box.set_style('spacing: 2px; padding: 0px 1px;');
     
         // Get settings
         const showIcon = this._settings.get_boolean('show-icon');
         const iconPosition = this._settings.get_string('icon-position');
-    
-        // Debug log
-        //console.log('Icon Position:', iconPosition, 'Show Icon:', showIcon);
     
         // Add elements in the correct order based on position
         if (showIcon && iconPosition.toLowerCase() === 'left') {
@@ -373,7 +374,6 @@ class DexcomIndicator extends PanelMenu.Button {
             this.icon && this.box.add_child(this.icon);
         }
     }
-
     // Helper function to add additional elements
 _addAdditionalElements(reading, style) {
     if (this._settings.get_boolean('show-trend-arrows')) {
@@ -405,81 +405,86 @@ _addAdditionalElements(reading, style) {
     }
 }
 
-    // Update _updateDisplay function
-    _updateDisplay(reading) {
-        // Clear the box and set base style
-        this.box.remove_all_children();
-        this.box.style_class = 'dexcom-box';
+_updateDisplay(reading) {
+    // Clear the box
+    this.box.remove_all_children();
+    
+    // Explicitly reset any style class to ensure consistent appearance
+    this.box.style_class = '';
+    this.box.set_style('');
+    
+    // Apply minimal spacing
+    this.box.set_style('spacing: 2px; padding: 0px 1px;');
 
-        // Add icon if enabled
-        if (this._settings.get_boolean('show-icon')) {
-            this.box.add_child(this.icon);
-        }
-
-        // Handle case when no reading is available
-        if (!reading) {
-            const label = new St.Label({
-                text: 'No Data',
-                style_class: 'dexcom-value'
-            });
-            this.box.add_child(label);
-            return;
-        }
-
-        // Store current reading for future reference
-        this._currentReading = reading;
-
-        // Get styling based on glucose value
-        const { styleClass, style } = this._getBackgroundClass(reading.value);
-
-        // Create container for glucose value
-        const valueContainer = new St.Bin({
-            style_class: styleClass,
-            style: style,
-            x_align: Clutter.ActorAlign.CENTER,
-            y_align: Clutter.ActorAlign.CENTER
-        });
-
-        // Add glucose value
-        const valueLabel = new St.Label({
-            text: `${reading.value}`,
-            y_align: Clutter.ActorAlign.CENTER
-        });
-        
-        valueContainer.set_child(valueLabel);
-        this.box.add_child(valueContainer);
-
-        // Add trend arrow if enabled
-        if (this._settings.get_boolean('show-trend-arrows')) {
-            const trendLabel = new St.Label({
-                text: this._getTrendArrow(reading.trend),
-                style_class: 'dexcom-trend',
-                style: style // Apply same color as value
-            });
-            this.box.add_child(trendLabel);
-        }
-
-        // Add delta if enabled
-        if (this._settings.get_boolean('show-delta')) {
-            const deltaLabel = new St.Label({
-                text: `${reading.delta > 0 ? '+' : ''}${reading.delta}`,
-                style_class: 'dexcom-delta',
-                style: style // Apply same color as value
-            });
-            this.box.add_child(deltaLabel);
-        }
-
-        // Add elapsed time if enabled
-        if (this._settings.get_boolean('show-elapsed-time')) {
-            const elapsed = Math.floor((Date.now() - reading.timestamp) / 60000);
-            const timeLabel = new St.Label({
-                text: `${elapsed}m`,
-                style_class: 'dexcom-time',
-                style: style // Apply the same color style as other elements
-            });
-            this.box.add_child(timeLabel);
-        }
+    // Add icon if enabled
+    if (this._settings.get_boolean('show-icon')) {
+        this.box.add_child(this.icon);
     }
+
+    // Handle case when no reading is available
+    if (!reading) {
+        const label = new St.Label({
+            text: 'No Data',
+            style_class: 'dexcom-value'
+        });
+        this.box.add_child(label);
+        return;
+    }
+
+    // Store current reading for future reference
+    this._currentReading = reading;
+
+    // Get styling based on glucose value
+    const { styleClass, style } = this._getBackgroundClass(reading.value);
+
+    // Create container for glucose value
+    const valueContainer = new St.Bin({
+        style_class: styleClass,
+        style: style,
+        x_align: Clutter.ActorAlign.CENTER,
+        y_align: Clutter.ActorAlign.CENTER
+    });
+
+    // Add glucose value
+    const valueLabel = new St.Label({
+        text: `${reading.value}`,
+        y_align: Clutter.ActorAlign.CENTER
+    });
+    
+    valueContainer.set_child(valueLabel);
+    this.box.add_child(valueContainer);
+
+    // Add trend arrow if enabled
+    if (this._settings.get_boolean('show-trend-arrows')) {
+        const trendLabel = new St.Label({
+            text: this._getTrendArrow(reading.trend),
+            style_class: 'dexcom-trend',
+            style: style // Apply same color as value
+        });
+        this.box.add_child(trendLabel);
+    }
+
+    // Add delta if enabled
+    if (this._settings.get_boolean('show-delta')) {
+        const deltaLabel = new St.Label({
+            text: `${reading.delta > 0 ? '+' : ''}${reading.delta}`,
+            style_class: 'dexcom-delta',
+            style: style // Apply same color as value
+        });
+        this.box.add_child(deltaLabel);
+    }
+
+    // Add elapsed time if enabled
+    if (this._settings.get_boolean('show-elapsed-time')) {
+        const elapsed = Math.floor((Date.now() - reading.timestamp) / 60000);
+        const timeLabel = new St.Label({
+            text: `${elapsed}m`,
+            style_class: 'dexcom-time',
+            style: style // Apply the same color style as other elements
+        });
+        this.box.add_child(timeLabel);
+    }
+}
     
     _buildMenu() {
         // Glucose info section
@@ -533,20 +538,31 @@ _addAdditionalElements(reading, style) {
         });
         this.menu.addMenuItem(settingsButton);
     }
+
     _getBackgroundClass(value) {
-        // Convert thresholds to the current unit if needed
+        // Get current unit and convert value to number
         const isMmol = this._settings.get_string('unit') === 'mmol/L';
-        const convertToCurrentUnit = (mgdlValue) => {
-            return isMmol ? (mgdlValue / 18.0).toFixed(1) : mgdlValue;
+        const numericValue = parseFloat(value);
+        
+        // Get threshold values in mg/dL (as stored)
+        const thresholdsMgdl = {
+            urgentHigh: this._settings.get_int('urgent-high-threshold'),
+            high: this._settings.get_int('high-threshold'),
+            low: this._settings.get_int('low-threshold'),
+            urgentLow: this._settings.get_int('urgent-low-threshold')
         };
-    
-        // Get threshold values and convert if necessary
-        const thresholds = {
-            urgentHigh: convertToCurrentUnit(this._settings.get_int('urgent-high-threshold')),
-            high: convertToCurrentUnit(this._settings.get_int('high-threshold')),
-            low: convertToCurrentUnit(this._settings.get_int('low-threshold')),
-            urgentLow: convertToCurrentUnit(this._settings.get_int('urgent-low-threshold'))
-        };
+        
+        // Convert thresholds to the current unit if needed
+        const thresholds = {};
+        if (isMmol) {
+            // Convert mg/dL thresholds to mmol/L for comparison
+            Object.keys(thresholdsMgdl).forEach(key => {
+                thresholds[key] = parseFloat((thresholdsMgdl[key] / 18.0).toFixed(1));
+            });
+        } else {
+            // Use mg/dL values directly
+            Object.assign(thresholds, thresholdsMgdl);
+        }
     
         // Get colors from settings
         const colors = {
@@ -565,45 +581,41 @@ _addAdditionalElements(reading, style) {
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         };
     
-        // Compare using current unit values
-        let styleClass = 'dexcom-value-container';
-        let color, bgColor, borderColor;
-    
-        // Convert value to float for comparison if it's a string
-        const numericValue = parseFloat(value);
-    
-        if (numericValue >= thresholds.urgentHigh) {
-            color = colors.urgentHigh;
-            //bgColor = hexToRgba(colors.urgentHigh, 0.2);
-            borderColor = hexToRgba(colors.urgentHigh, 0.4);
-        } else if (numericValue >= thresholds.high) {
-            color = colors.high;
-            //bgColor = hexToRgba(colors.high, 0.2);
-            borderColor = hexToRgba(colors.high, 0.4);
-        } else if (numericValue > thresholds.low) {
-            color = colors.normal;
-            //bgColor = hexToRgba(colors.normal, 0.2);
-            borderColor = hexToRgba(colors.normal, 0.4);
-        } else if (numericValue > thresholds.urgentLow) {
-            color = colors.low;
-            //bgColor = hexToRgba(colors.low, 0.2);
-            borderColor = hexToRgba(colors.low, 0.4);
-        } else {
-            color = colors.urgentLow;
-            //bgColor = hexToRgba(colors.urgentLow, 0.2);
-            borderColor = hexToRgba(colors.urgentLow, 0.4);
-        }
-    
-        console.log('Color thresholds:', {
-            unit: this._settings.get_string('unit'),
+        // Log debug information
+        console.log('Color threshold check:', {
+            unit: isMmol ? 'mmol/L' : 'mg/dL',
             value: numericValue,
-            thresholds,
-            selectedColor: color
+            thresholds: thresholds
         });
     
-        const style = `background-color: ${bgColor}; border-color: ${borderColor}; color: ${color};`;
+        // Compare and determine color - use floating point comparison with small epsilon for mmol/L
+        let styleClass = 'dexcom-value-container';
+        let color, borderColor;
+        
+        const epsilon = isMmol ? 0.05 : 1; // Tolerance for floating-point comparison
+        
+        if (numericValue >= (thresholds.urgentHigh - epsilon)) {
+            color = colors.urgentHigh;
+            borderColor = hexToRgba(colors.urgentHigh, 0.6);
+        } else if (numericValue >= (thresholds.high - epsilon)) {
+            color = colors.high;
+            borderColor = hexToRgba(colors.high, 0.6);
+        } else if (numericValue > (thresholds.low + epsilon)) {
+            color = colors.normal;
+            borderColor = hexToRgba(colors.normal, 0.6);
+        } else if (numericValue > (thresholds.urgentLow + epsilon)) {
+            color = colors.low;
+            borderColor = hexToRgba(colors.low, 0.6);
+        } else {
+            color = colors.urgentLow;
+            borderColor = hexToRgba(colors.urgentLow, 0.6);
+        }
+    
+        // Create a more minimal style that will work across distributions
+        const style = `color: ${color}; border-color: ${borderColor};`;
         return { styleClass, style };
-    }    
+    }
+
     // Update _updateMenuInfo function in extension.js
     _updateMenuInfo(reading) {
         if (!reading) {
