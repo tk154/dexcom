@@ -9,10 +9,10 @@ export class DexcomClient {
         this._username = username;
         this._password = password;
         
-        // Standardize region value
+       
         region = region.toLowerCase().trim();
         
-        // Expand region mappings for better compatibility
+       
         const regionMap = {
             'us': 'us',
             'usa': 'us',
@@ -25,7 +25,7 @@ export class DexcomClient {
         
         this._region = regionMap[region] || 'ous';
         
-        // Update base URLs for each region
+       
         this._baseUrls = {
             'us': 'https://share2.dexcom.com',
             'ous': 'https://shareous1.dexcom.com'
@@ -38,11 +38,11 @@ export class DexcomClient {
         this._sessionId = null;
         this._accountId = null;
         
-        // Configure session settings
+       
         this._session = new Soup.Session();
         this._session.timeout = 30;
         
-        // Log initialization details for debugging
+       
         console.log('DexcomClient initialized:', {
             region: this._region,
             baseUrl: this._baseUrl,
@@ -50,21 +50,21 @@ export class DexcomClient {
         });
     }
 
-    // Helper function to encode URI components safely
+   
     _encodeURIComponent(str) {
         return encodeURIComponent(str).replace(/[!'()*]/g, c => 
             '%' + c.charCodeAt(0).toString(16).toUpperCase()
         );
     }
 
-    // Helper function to build query string
+   
     _buildQueryString(params) {
         return Object.keys(params)
             .map(key => `${this._encodeURIComponent(key)}=${this._encodeURIComponent(params[key])}`)
             .join('&');
     }
 
-    // Update _makeRequest method
+   
     async _makeRequest(url, method = 'GET', data = null, params = null) {
         try {
             if (params) {
@@ -79,13 +79,13 @@ export class DexcomClient {
                 uri: GLib.Uri.parse(url, GLib.UriFlags.NONE)
             });
 
-            // Set headers
+           
             const headers = message.get_request_headers();
             headers.append('Content-Type', 'application/json; charset=utf-8');
             headers.append('Accept', 'application/json');
             headers.append('User-Agent', this._agent);
 
-            // Add request body if provided and method is not GET
+           
             if (data && method !== 'GET') {
                 const jsonStr = JSON.stringify(data);
                 const bytes = new TextEncoder().encode(jsonStr);
@@ -109,7 +109,7 @@ export class DexcomClient {
                 }
             }
 
-            // Handle error responses
+           
             throw new Error(`Request failed with status ${status}: ${responseText}`);
 
         } catch (error) {
@@ -118,16 +118,16 @@ export class DexcomClient {
         }
     }
 
-    // dexcomClient.js içine eklenecek debug fonksiyonu
+   
     _logDebugInfo(stage, data) {
         const timestamp = new Date().toISOString();
         console.log(`[DEBUG ${timestamp}] ${stage}:`, JSON.stringify(data, null, 2));
     }
     
- // Enhanced authentication function with better error handling
+
 async authenticate() {
     try {
-        // Validate credentials
+       
         if (!this._username || !this._password) {
             throw new Error('Username and password are required');
         }
@@ -135,7 +135,7 @@ async authenticate() {
         console.log('Starting authentication for region:', this._region);
         console.log('Using base URL:', this._baseUrl);
 
-        // Step 1: Initial authentication
+       
         const authUrl = `${this._baseUrl}/ShareWebServices/Services/General/AuthenticatePublisherAccount`;
         const authPayload = {
             accountName: this._username,
@@ -146,14 +146,14 @@ async authenticate() {
         console.log('Attempting initial authentication...');
         this._accountId = await this._makeRequest(authUrl, 'POST', authPayload);
 
-        // Validate account ID
+       
         if (!this._accountId || typeof this._accountId !== 'string') {
             throw new Error('Invalid account ID received');
         }
 
         console.log('Account ID received:', this._accountId);
 
-        // Step 2: Session login
+       
         const loginUrl = `${this._baseUrl}/ShareWebServices/Services/General/LoginPublisherAccountById`;
         const loginPayload = {
             accountId: this._accountId,
@@ -163,7 +163,7 @@ async authenticate() {
 
         this._sessionId = await this._makeRequest(loginUrl, 'POST', loginPayload);
 
-        // Validate session ID
+       
         if (!this._sessionId || this._sessionId === '00000000-0000-0000-0000-000000000000') {
             throw new Error('Invalid session ID received');
         }
@@ -176,7 +176,7 @@ async authenticate() {
         if (error.message.includes('500')) {
             console.error('Server error details:', error);
         }
-        // Clear session data on error
+       
         this._sessionId = null;
         this._accountId = null;
         throw error;
@@ -226,46 +226,46 @@ async authenticate() {
     }
     
     _formatReading(reading) {
-        // Parse timestamps properly
+       
         const currentTimestamp = parseInt(reading.WT.match(/\d+/)[0]);
         
-        // Calculate base value
+       
         let value = reading.Value;
         if (this._unit === 'mmol/L') {
             value = (reading.Value / 18.0).toFixed(1);
         }
     
-        // Initialize delta
+       
         let delta = 0;
         const trend = this._normalizeTrend(reading.Trend);
     
-        // Calculate delta if previous reading exists
+       
         if (this._previousReading) {
             const prevTimestamp = parseInt(this._previousReading.WT.match(/\d+/)[0]);
             const timeDiff = currentTimestamp - prevTimestamp;
     
-            // Only calculate delta if readings are within 15 minutes
-            if (timeDiff <= 900000) { // 15 minutes in milliseconds
+           
+            if (timeDiff <= 900000) {
                 const prevValue = this._previousReading.Value;
                 delta = reading.Value - prevValue;
     
-                // Convert to mmol/L if needed
+               
                 if (this._unit === 'mmol/L') {
                     delta = (delta / 18.0);
                 }
             }
         }
     
-        // If delta is 0 but we have a previous delta, preserve trend information
+       
         if (delta === 0 && this._previousDelta) {
-            // Only preserve small trend changes, not big jumps
+           
             if (Math.abs(this._previousDelta) <= 2.0) {
                 delta = this._previousDelta;
                 console.log('[DEBUG] Preserving previous delta:', delta);
             }
         }
     
-        // If still no delta calculated from readings, estimate from trend
+       
         if (delta === 0) {
             const trendDeltas = {
                 'DOUBLE_UP': this._unit === 'mmol/L' ? 0.17 : 3.0,
@@ -280,15 +280,15 @@ async authenticate() {
             delta = trendDeltas[trend] || 0;
         }
     
-        // Normalize trend with delta check for consistency
+       
         const finalTrend = this._normalizeTrend(reading.Trend, delta);
     
-        // Store current reading for next delta calculation
+       
         this._previousReading = {...reading};
-        // Store current delta for next calculation
+       
         this._previousDelta = delta;
     
-        // Create formatted reading object
+       
         const formattedReading = {
             value: value,
             unit: this._unit,
@@ -300,11 +300,11 @@ async authenticate() {
         console.log('[DEBUG] Formatted reading:', formattedReading);
         return formattedReading;
     }
-    // Helper function to normalize trend values
+   
     _normalizeTrend(trend, delta = null) {
         console.log('[DEBUG] _normalizeTrend input:', trend, 'delta:', delta);
         
-        // Normalize input trend value
+       
         const normalizedInput = String(trend || '')
             .toUpperCase()
             .replace(/\s+/g, '')
@@ -312,9 +312,9 @@ async authenticate() {
     
         console.log('[DEBUG] Normalized trend input:', normalizedInput);
     
-        // Define trend mappings
+       
         const trendMap = {
-            'NONE': 'FLAT',  // Map NONE to FLAT for better UX
+            'NONE': 'FLAT', 
             'DOUBLEUP': 'DOUBLE_UP',
             'SINGLEUP': 'SINGLE_UP',
             'FORTYFIVEUP': 'FORTY_FIVE_UP',
@@ -326,11 +326,11 @@ async authenticate() {
             'RATEOUTOFRANGE': 'RATE_OUT_OF_RANGE'
         };
     
-        // Get mapped trend
+       
         let mappedTrend = trendMap[normalizedInput] || 'FLAT';
         console.log('[DEBUG] Initial mapped trend:', mappedTrend);
     
-        // Delta and trend consistency check
+       
         if (delta !== null) {
             const originalTrend = mappedTrend;
             

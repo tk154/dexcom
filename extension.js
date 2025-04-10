@@ -18,23 +18,23 @@ class DexcomIndicator extends PanelMenu.Button {
         
         this.path = null;
 
-        // Create container box
+       
         this.box = new St.BoxLayout({
             style_class: 'panel-status-menu-box'
         });
 
-        // Create label
+       
         this.buttonText = new St.Label({
             text: '---',
             y_align: Clutter.ActorAlign.CENTER,
             style_class: 'dexcom-label'
         });
 
-        // Add the box to the button
+       
         this.add_child(this.box);
         this.box.add_child(this.buttonText);
 
-        // Initialize DexcomClient with credentials
+       
         this._dexcomClient = new DexcomClient(
             this._settings.get_string('username'),
             this._settings.get_string('password'),
@@ -42,17 +42,17 @@ class DexcomIndicator extends PanelMenu.Button {
             this._settings.get_string('unit')
         );
 
-        // Add menu items
+       
         this._buildMenu();
-        // Listen changes
+       
         this._connectSignals();
-        // Start monitoring
+       
         this._startMonitoring();
     }
     
     setPath(path) {
         this.path = path;
-        // Now that we have the path, initialize the icon
+       
         this._initIcon();
         this._updateIconVisibility();
     }
@@ -85,7 +85,7 @@ class DexcomIndicator extends PanelMenu.Button {
             this._loadIcon();
         } catch (error) {
             console.log('Error initializing icon:', error);
-            // Fallback icon
+           
             this.icon = new St.Icon({
                 icon_name: 'utilities-system-monitor-symbolic',
                 style_class: 'system-status-icon',
@@ -95,20 +95,20 @@ class DexcomIndicator extends PanelMenu.Button {
     }
 
     _connectSignals() {        
-        // Function to update display when settings change
+       
         const updateDisplaySettings = () => {
             if (this._currentReading) {
                 this._updateDisplay(this._currentReading);
             }
         };
     
-        // Listen for display setting changes
+       
         this._settings.connect('changed::show-icon', updateDisplaySettings);
         this._settings.connect('changed::show-trend-arrows', updateDisplaySettings);
         this._settings.connect('changed::show-delta', updateDisplaySettings);
         this._settings.connect('changed::show-elapsed-time', updateDisplaySettings);
         
-        // Listen for credential and unit changes
+       
         this._settings.connect('changed::username', () => {
             this._updateCredentials();
             this._updateReading();
@@ -125,12 +125,12 @@ class DexcomIndicator extends PanelMenu.Button {
             this._updateUnit();
             this._updateReading();
         });
-        // Add icon position change listener
+       
         this._settings.connect('changed::icon-position', () => {
             this._updateIconVisibility();
         });
 
-        // Add show-icon change listener if not already present
+       
         this._settings.connect('changed::show-icon', () => {
             this._updateIconVisibility();
         });
@@ -156,7 +156,7 @@ class DexcomIndicator extends PanelMenu.Button {
         );
     }
 
-    // Add menu toggle items with immediate update
+   
     _addToggleMenuItem(label, settingKey) {
         const toggleItem = new PopupMenu.PopupSwitchMenuItem(
             label, 
@@ -164,14 +164,14 @@ class DexcomIndicator extends PanelMenu.Button {
         );
         toggleItem.connect('toggled', (item) => {
             this._settings.set_boolean(settingKey, item.state);
-            // Force an immediate reading update
+           
             this._updateReading();
         });
         this.menu.addMenuItem(toggleItem);
     }
 
     _updateUnit() {
-        // Update DexcomClient with new unit
+       
         this._dexcomClient = new DexcomClient(
             this._settings.get_string('username'),
             this._settings.get_string('password'),
@@ -200,45 +200,45 @@ class DexcomIndicator extends PanelMenu.Button {
             this._updateMenuInfo(updatedReading);
         }
     
-        // Force an immediate reading update
+       
         this._updateReading();
     }
     
-    // Update _startMonitoring function in extension.js
+   
     _startMonitoring() {
-        // Initial reading
+       
         this._updateReading();
         
-        // Clear any existing interval
+       
         if (this._timeout) {
             clearInterval(this._timeout);
         }
         
-        // Set up interval for periodic updates
+       
         this._timeout = setInterval(() => {
             this._updateReading();
         }, this._settings.get_int('update-interval') * 1000);
     }
 
-    // Update the reading from Dexcom
+   
     async _updateReading() {
-        // Check if client is properly initialized
+       
         if (!this._dexcomClient) {
             this._updateDisplayError('Setup Required', 'Please configure your Dexcom Share credentials');
             return;
         }
     
         try {
-            // Attempt to fetch latest glucose reading
+           
             const reading = await this._dexcomClient.getLatestGlucose();
             
-            // Handle case where no reading is available
+           
             if (!reading) {
                 this._updateDisplayError('No Data', 'No glucose data available');
                 return;
             }
     
-            // Update display with new reading
+           
             this._updateDisplay(reading);
             this._updateMenuInfo(reading);
         } catch (error) {
@@ -247,12 +247,12 @@ class DexcomIndicator extends PanelMenu.Button {
             let errorMessage = 'Error';
             let detailedMessage = error.message;
     
-            // Analyze error messages and provide appropriate responses
+           
             if (error.message.includes('AccountPasswordInvalid')) {
                 errorMessage = 'Auth Error';
                 detailedMessage = 'Invalid username or password';
                 
-                // Reset credentials and attempt to update
+               
                 this._dexcomClient = null;
                 await this._updateCredentials();
             } else if (error.message.includes('AccountNotFound')) {
@@ -262,7 +262,7 @@ class DexcomIndicator extends PanelMenu.Button {
                 errorMessage = 'Auth Error';
                 detailedMessage = 'Invalid password';
             } else if (error.message.includes('Session')) {
-                // Retry on session errors
+               
                 await this._updateReading();
                 return;
             } else if (error.message.includes('network') || error.message.includes('timeout')) {
@@ -270,12 +270,12 @@ class DexcomIndicator extends PanelMenu.Button {
                 detailedMessage = 'Please check your internet connection';
             }
     
-            // Display error message to user
+           
             this._updateDisplayError(errorMessage, detailedMessage);
         }
     }
 
-    // Helper function to update the display with error messages
+   
     _updateDisplayError(errorMessage, detailedMessage) {
         this.buttonText.text = errorMessage;
         this.buttonText.style_class = 'dexcom-label dexcom-error';
@@ -290,7 +290,7 @@ class DexcomIndicator extends PanelMenu.Button {
         const low = this._settings.get_int('low-threshold');
         const urgentLow = this._settings.get_int('urgent-low-threshold');
 
-        // Get colors from settings
+       
         const urgentHighColor = this._settings.get_string('urgent-high-color');
         const highColor = this._settings.get_string('high-color');
         const normalColor = this._settings.get_string('normal-color');
@@ -323,23 +323,23 @@ class DexcomIndicator extends PanelMenu.Button {
     }
 
     _updateIconVisibility() {
-        // First, remove all existing children
+       
         this.box.remove_all_children();
         
-        // Reset style class to ensure consistent appearance
+       
         this.box.style_class = '';
         this.box.set_style('spacing: 2px; padding: 0px 1px;');
     
-        // Get settings
+       
         const showIcon = this._settings.get_boolean('show-icon');
         const iconPosition = this._settings.get_string('icon-position');
     
-        // Add elements in the correct order based on position
+       
         if (showIcon && iconPosition.toLowerCase() === 'left') {
             this.icon && this.box.add_child(this.icon);
         }
     
-        // Always add the value container
+       
         if (this._currentReading) {
             const { styleClass, style } = this._getBackgroundClass(this._currentReading.value);
             
@@ -358,10 +358,10 @@ class DexcomIndicator extends PanelMenu.Button {
             valueContainer.set_child(valueLabel);
             this.box.add_child(valueContainer);
     
-            // Add other elements (trend arrows, delta, elapsed time)
+           
             this._addAdditionalElements(this._currentReading, style);
         } else {
-            // If no reading, just show "No Data"
+           
             const label = new St.Label({
                 text: 'No Data',
                 style_class: 'dexcom-value'
@@ -369,12 +369,12 @@ class DexcomIndicator extends PanelMenu.Button {
             this.box.add_child(label);
         }
     
-        // Add icon at the end if position is right
+       
         if (showIcon && iconPosition.toLowerCase() === 'right') {
             this.icon && this.box.add_child(this.icon);
         }
     }
-    // Helper function to add additional elements
+   
 _addAdditionalElements(reading, style) {
     if (this._settings.get_boolean('show-trend-arrows')) {
         const trendLabel = new St.Label({
@@ -406,22 +406,22 @@ _addAdditionalElements(reading, style) {
 }
 
 _updateDisplay(reading) {
-    // Clear the box
+   
     this.box.remove_all_children();
     
-    // Explicitly reset any style class to ensure consistent appearance
+   
     this.box.style_class = '';
     this.box.set_style('');
     
-    // Apply minimal spacing
+   
     this.box.set_style('spacing: 2px; padding: 0px 1px;');
 
-    // Add icon if enabled
+   
     if (this._settings.get_boolean('show-icon')) {
         this.box.add_child(this.icon);
     }
 
-    // Handle case when no reading is available
+   
     if (!reading) {
         const label = new St.Label({
             text: 'No Data',
@@ -431,13 +431,13 @@ _updateDisplay(reading) {
         return;
     }
 
-    // Store current reading for future reference
+   
     this._currentReading = reading;
 
-    // Get styling based on glucose value
+   
     const { styleClass, style } = this._getBackgroundClass(reading.value);
 
-    // Create container for glucose value
+   
     const valueContainer = new St.Bin({
         style_class: styleClass,
         style: style,
@@ -445,7 +445,7 @@ _updateDisplay(reading) {
         y_align: Clutter.ActorAlign.CENTER
     });
 
-    // Add glucose value
+   
     const valueLabel = new St.Label({
         text: `${reading.value}`,
         y_align: Clutter.ActorAlign.CENTER
@@ -454,50 +454,50 @@ _updateDisplay(reading) {
     valueContainer.set_child(valueLabel);
     this.box.add_child(valueContainer);
 
-    // Add trend arrow if enabled
+   
     if (this._settings.get_boolean('show-trend-arrows')) {
         const trendLabel = new St.Label({
             text: this._getTrendArrow(reading.trend),
             style_class: 'dexcom-trend',
-            style: style // Apply same color as value
+            style: style
         });
         this.box.add_child(trendLabel);
     }
 
-    // Add delta if enabled
+   
     if (this._settings.get_boolean('show-delta')) {
         const deltaLabel = new St.Label({
             text: `${reading.delta > 0 ? '+' : ''}${reading.delta}`,
             style_class: 'dexcom-delta',
-            style: style // Apply same color as value
+            style: style
         });
         this.box.add_child(deltaLabel);
     }
 
-    // Add elapsed time if enabled
+   
     if (this._settings.get_boolean('show-elapsed-time')) {
         const elapsed = Math.floor((Date.now() - reading.timestamp) / 60000);
         const timeLabel = new St.Label({
             text: `${elapsed}m`,
             style_class: 'dexcom-time',
-            style: style // Apply the same color style as other elements
+            style: style
         });
         this.box.add_child(timeLabel);
     }
 }
     
     _buildMenu() {
-        // Glucose info section
+       
         this.glucoseInfo = new PopupMenu.PopupMenuItem('Loading...', {
             reactive: false,
             style_class: 'dexcom-menu-item'
         });
         this.menu.addMenuItem(this.glucoseInfo);
     
-        // Add separator
+       
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
     
-        // Display options
+       
         const displayOptionsLabel = new PopupMenu.PopupMenuItem('Display Options:', {
             reactive: false,
             style_class: 'dexcom-menu-header'
@@ -509,25 +509,25 @@ _updateDisplay(reading) {
         this._addToggleMenuItem('Show Elapsed Time', 'show-elapsed-time');
         this._addToggleMenuItem('Show Icon', 'show-icon');
     
-        // Add separator
+       
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
     
-        // Add refresh button
+       
         const refreshButton = new PopupMenu.PopupMenuItem('Refresh Now', {
             style_class: 'dexcom-refresh-button'
         });
         refreshButton.connect('activate', () => {
-            // Show loading indicator in menu
+           
             this.glucoseInfo.label.text = 'Refreshing...';
-            // Trigger immediate update
+           
             this._updateReading();
         });
         this.menu.addMenuItem(refreshButton);
     
-        // Add separator
+       
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
     
-        // Add settings button
+       
         const settingsButton = new PopupMenu.PopupMenuItem('Open Settings', {
             style_class: 'dexcom-settings-button'
         });
@@ -540,11 +540,11 @@ _updateDisplay(reading) {
     }
 
     _getBackgroundClass(value) {
-        // Get current unit and convert value to number
+       
         const isMmol = this._settings.get_string('unit') === 'mmol/L';
         const numericValue = parseFloat(value);
         
-        // Get threshold values in mg/dL (as stored)
+       
         const thresholdsMgdl = {
             urgentHigh: this._settings.get_int('urgent-high-threshold'),
             high: this._settings.get_int('high-threshold'),
@@ -552,19 +552,19 @@ _updateDisplay(reading) {
             urgentLow: this._settings.get_int('urgent-low-threshold')
         };
         
-        // Convert thresholds to the current unit if needed
+       
         const thresholds = {};
         if (isMmol) {
-            // Convert mg/dL thresholds to mmol/L for comparison
+           
             Object.keys(thresholdsMgdl).forEach(key => {
                 thresholds[key] = parseFloat((thresholdsMgdl[key] / 18.0).toFixed(1));
             });
         } else {
-            // Use mg/dL values directly
+           
             Object.assign(thresholds, thresholdsMgdl);
         }
     
-        // Get colors from settings
+       
         const colors = {
             urgentHigh: this._settings.get_string('urgent-high-color'),
             high: this._settings.get_string('high-color'),
@@ -573,7 +573,7 @@ _updateDisplay(reading) {
             urgentLow: this._settings.get_string('urgent-low-color')
         };
     
-        // Helper function to convert hex to rgba
+       
         const hexToRgba = (hex, alpha) => {
             const r = parseInt(hex.slice(1, 3), 16);
             const g = parseInt(hex.slice(3, 5), 16);
@@ -581,18 +581,18 @@ _updateDisplay(reading) {
             return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         };
     
-        // Log debug information
+       
         console.log('Color threshold check:', {
             unit: isMmol ? 'mmol/L' : 'mg/dL',
             value: numericValue,
             thresholds: thresholds
         });
     
-        // Compare and determine color - use floating point comparison with small epsilon for mmol/L
+       
         let styleClass = 'dexcom-value-container';
         let color, borderColor;
         
-        const epsilon = isMmol ? 0.05 : 1; // Tolerance for floating-point comparison
+        const epsilon = isMmol ? 0.05 : 1;
         
         if (numericValue >= (thresholds.urgentHigh - epsilon)) {
             color = colors.urgentHigh;
@@ -611,12 +611,12 @@ _updateDisplay(reading) {
             borderColor = hexToRgba(colors.urgentLow, 0.6);
         }
     
-        // Create a more minimal style that will work across distributions
+       
         const style = `color: ${color}; border-color: ${borderColor};`;
         return { styleClass, style };
     }
 
-    // Update _updateMenuInfo function in extension.js
+   
     _updateMenuInfo(reading) {
         if (!reading) {
             this.glucoseInfo.label.text = 'No data available';
@@ -630,7 +630,7 @@ _updateDisplay(reading) {
             hour12: false
         });
     
-        // Updated trend mapping with better descriptions
+       
         const trendMap = {
             'NONE': 'Stable',
             'DOUBLE_UP': 'Rising Rapidly',
@@ -645,7 +645,7 @@ _updateDisplay(reading) {
         };
     
         const trendDescription = trendMap[reading.trend] || 'Unknown';
-        //console.log('Debug - Trend Value:', reading.trend, 'Mapped Description:', trendDescription);
+       
     
         const info = [
             `Last Reading: ${reading.value} ${unit}`,
@@ -695,7 +695,7 @@ export default class DexcomExtension extends Extension {
             this._indicator.destroy();
             this._indicator = null;
         }
-        // Clear settings reference
+       
         if (this._settings) {
             this._settings = null;
         }

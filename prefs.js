@@ -8,7 +8,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
 
-        // Create pages
+       
         const accountPage = new Adw.PreferencesPage({
             title: 'Account',
             icon_name: 'system-users-symbolic',
@@ -28,7 +28,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
         window.add(thresholdPage);
         window.add(displayPage);
 
-        // Add groups to pages
+       
         this._addAccountGroup(accountPage, settings);
         this._addThresholdGroup(thresholdPage, settings);
         this._addColorGroup(thresholdPage, settings);
@@ -41,7 +41,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
             description: 'Enter your Dexcom Share credentials',
         });
 
-        // Username
+       
         const usernameRow = new Adw.EntryRow({
             title: 'Username',
         });
@@ -51,7 +51,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
         usernameRow.set_text(settings.get_string('username'));
         group.add(usernameRow);
 
-        // Password
+       
         const passwordRow = new Adw.PasswordEntryRow({
             title: 'Password',
         });
@@ -61,7 +61,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
         passwordRow.set_text(settings.get_string('password'));
         group.add(passwordRow);
 
-        // Region
+       
         const regionRow = new Adw.ActionRow({ title: 'Region' });
         const regionCombo = new Gtk.ComboBoxText({
             valign: Gtk.Align.CENTER,
@@ -78,7 +78,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
         regionRow.add_suffix(regionCombo);
         group.add(regionRow);
 
-        // Unit selection
+       
         const unitRow = new Adw.ActionRow({ title: 'Glucose Unit' });
         const unitCombo = new Gtk.ComboBoxText({
             valign: Gtk.Align.CENTER,
@@ -95,7 +95,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
         unitRow.add_suffix(unitCombo);
         group.add(unitRow);
 
-        // Update interval
+       
         this._addSpinButton(group, settings, 'update-interval',
             'Update Interval (seconds)', 60, 600, 30);
 
@@ -108,19 +108,19 @@ export default class DexcomPreferences extends ExtensionPreferences {
             description: `Set glucose threshold values (${settings.get_string('unit')})`,
         });
 
-        // Helper function to convert between units
+       
         const convertValue = (value, toMmol = false) => {
             if (toMmol) {
-                return Math.round((value / 18.0) * 10) / 10; // mg/dL to mmol/L
+                return Math.round((value / 18.0) * 10) / 10;
             }
-            return Math.round(value * 18.0); // mmol/L to mg/dL
+            return Math.round(value * 18.0);
         };
 
-        // Get current unit
+       
         const currentUnit = settings.get_string('unit');
         const isMmol = currentUnit === 'mmol/L';
 
-        // Set ranges based on unit
+       
         const ranges = isMmol ? {
             urgentHigh: { min: 10.0, max: 22.2, increment: 0.1 },
             high: { min: 7.8, max: 16.7, increment: 0.1 },
@@ -133,7 +133,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
             urgentLow: { min: 40, max: 80, increment: 1 }
         };
 
-        // Create spin buttons with appropriate ranges
+       
         this._addSpinButton(group, settings, 'urgent-high-threshold',
             'Urgent High Threshold',
             ranges.urgentHigh.min,
@@ -162,22 +162,22 @@ export default class DexcomPreferences extends ExtensionPreferences {
             ranges.urgentLow.increment,
             isMmol);
 
-        // Listen for unit changes
+       
         settings.connect('changed::unit', () => {
             const newUnit = settings.get_string('unit');
             const switchingToMmol = newUnit === 'mmol/L';
 
-            // Update description
+           
             group.description = `Set glucose threshold values (${newUnit})`;
 
-            // Convert all threshold values
+           
             ['urgent-high-threshold', 'high-threshold', 'low-threshold', 'urgent-low-threshold'].forEach(key => {
                 const currentValue = settings.get_int(key);
                 const convertedValue = convertValue(currentValue, switchingToMmol);
                 settings.set_int(key, convertedValue);
             });
 
-            // Rebuild the group to update ranges
+           
             page.remove(group);
             this._addThresholdGroup(page, settings);
         });
@@ -210,7 +210,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
         this._addSwitch(group, settings, 'show-elapsed-time', 'Show Elapsed Time');
         this._addSwitch(group, settings, 'show-icon', 'Show Icon');
 
-        // Icon position
+       
         const iconPosRow = new Adw.ActionRow({ title: 'Icon Position' });
         const iconPosCombo = new Gtk.ComboBoxText({
             valign: Gtk.Align.CENTER,
@@ -241,11 +241,11 @@ export default class DexcomPreferences extends ExtensionPreferences {
                 page_size: 0
             }),
             valign: Gtk.Align.CENTER,
-            digits: isMmol ? 1 : 0, // Show decimal places for mmol/L
+            digits: isMmol ? 1 : 0,
             numeric: true
         });
 
-        // Get the stored value and convert if necessary
+       
         const storedValue = settings.get_int(key);
         if (isMmol) {
             spinButton.set_value(storedValue / 18.0);
@@ -256,11 +256,11 @@ export default class DexcomPreferences extends ExtensionPreferences {
         spinButton.connect('value-changed', () => {
             let value = spinButton.get_value();
             if (isMmol) {
-                value = Math.round(value * 18.0); // Convert back to mg/dL for storage
+                value = Math.round(value * 18.0);
             }
             settings.set_int(key, value);
 
-            // Validate thresholds
+           
             this._validateThresholds(settings, key, value);
         });
 
@@ -274,7 +274,7 @@ export default class DexcomPreferences extends ExtensionPreferences {
         const low = settings.get_int('low-threshold');
         const urgentLow = settings.get_int('urgent-low-threshold');
 
-        // Ensure thresholds maintain proper order
+       
         switch (key) {
             case 'urgent-high-threshold':
                 if (value <= high) {
